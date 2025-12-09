@@ -8,7 +8,7 @@ window.initializeExplorer = function() {
     // StatustUpdate Callback function
     const onStatusUpdate = (statusText, pgn) => {
         $('#status').text(statusText);
-        $('#moveHistory').text(pgn.join(' '));
+        $('#moveHistory').text(pgn || 'Start position');
     };
     
     // Move Select Callback function (when user clicks a move on the table)
@@ -16,13 +16,13 @@ window.initializeExplorer = function() {
         explorerBoard.makeMove(moveSAN);
     };
 
-    // Initialize Board
+    // 1. Initialize Board
     explorerBoard = new BoardComponent('myBoard', fetchStatsForCurrentPosition, onStatusUpdate);
     
-    // Initialize Stats Table
+    // 2. Initialize Stats Table
     explorerStatsTable = new StatsTableComponent('statsBody', onMoveSelect);
 
-    // Setup Event Listeners
+    // 3. Setup Event Listeners
     $('#resetBtn').on('click', () => {
         explorerBoard.reset();
         fetchStatsForCurrentPosition();
@@ -37,7 +37,7 @@ window.initializeExplorer = function() {
         explorerBoard.flip();
     });
     
-    // Initial data load
+    // 4. Initial data load
     fetchStatsForCurrentPosition();
 };
 
@@ -45,7 +45,7 @@ window.initializeExplorer = function() {
  * বর্তমান FEN এর জন্য API কল করে ডেটা লোড করে
  */
 async function fetchStatsForCurrentPosition() {
-    if (routerService.currentRoute !== 'explorer') return; // শুধু এক্সপ্লোরারে থাকলে কাজ করবে
+    if (routerService.currentRoute !== 'explorer') return; 
 
     const fen = explorerBoard.getFEN();
     explorerStatsTable.setLoading();
@@ -59,15 +59,15 @@ async function fetchStatsForCurrentPosition() {
  * Main Application Init
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // HashChange Event Listener
+    // HashChange Event Listener (Routing)
     const handleHashChange = () => {
         const hash = window.location.hash;
         routerService.loadRoute(hash);
     };
 
-    // যখন প্রথম লোড হবে
+    // প্রথম লোডের সময়
     handleHashChange();
     
-    // যখন #home থেকে #explorer এ যাবে
+    // Hash change হলে
     window.addEventListener('hashchange', handleHashChange);
 });
