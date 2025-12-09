@@ -3,7 +3,8 @@ class BoardComponent {
         this.boardId = boardId;
         this.onMoveCallback = onMoveCallback;
         this.onStatusUpdate = onStatusUpdate;
-        this.game = new Chess();
+        // Game instance গ্লোবালি অ্যাক্সেস করার জন্য
+        this.game = new Chess(); 
         this.board = null;
         this.init();
     }
@@ -15,7 +16,7 @@ class BoardComponent {
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this),
-            // পিস থিম: এখানে আমরা স্থানীয় ফাইল না দিয়ে CDN ব্যবহার করছি
+            // CDN থেকে পিস লোড করার জন্য Wikipedia Theme ব্যবহার
             pieceTheme: 'https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/img/chesspieces/wikipedia/{piece}.png'
         };
 
@@ -25,7 +26,6 @@ class BoardComponent {
     
     onDragStart (source, piece) {
       if (this.game.game_over()) return false;
-      // শুধু খেলার পালের গুটিই ধরা যাবে (Ex: White to move, so no black piece)
       if ((this.game.turn() === 'w' && piece.search(/^b/) !== -1) ||
           (this.game.turn() === 'b' && piece.search(/^w/) !== -1)) {
         return false;
@@ -33,18 +33,23 @@ class BoardComponent {
     }
 
     onDrop (source, target) {
+      // চালটি বৈধ কিনা চেক করা
       var move = this.game.move({
         from: source,
         to: target,
-        promotion: 'q'
+        promotion: 'q' // Simplification
       });
 
-      if (move === null) return 'snapback';
+      // **CRITICAL FIX:** অবৈধ চাল হলে 'snapback' রিটার্ন করলে Move Logic বন্ধ হবে
+      if (move === null) {
+          return 'snapback'; 
+      }
       
       this.updateStatus();
       if (this.onMoveCallback) {
-          this.onMoveCallback(move); // Move হলে callback করবে
+          this.onMoveCallback(move); 
       }
+      // **CRITICAL FIX:** বৈধ চাল হলে কোনো কিছু রিটার্ন না করলে move হয়ে যায়
     }
 
     onSnapEnd () {
@@ -94,7 +99,9 @@ class BoardComponent {
                 status += ', in Check!';
             }
         }
-        this.onStatusUpdate(status, this.game.pgn({ verbose: true }));
+        
+        // **CRITICAL FIX:** game.pgn() স্ট্রিং রিটার্ন করে, তাই সরাসরি পাঠানো হলো
+        this.onStatusUpdate(status, this.game.pgn());
     }
 
     getFEN() {
@@ -102,4 +109,4 @@ class BoardComponent {
     }
 }
 
-window.BoardComponent = BoardComponent; // গ্লোবালি এক্সপোর্ট করা
+window.BoardComponent = BoardComponent;
