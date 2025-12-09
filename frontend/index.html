@@ -31,9 +31,9 @@
     <!-- Main Content Area (SPA Router will load content here) -->
     <main id="app-container">
         <!-- Content will be injected by JavaScript router -->
+        <div class="loading-overlay">Loading...</div>
     </main>
 
-    <!-- Footer -->
     <footer>
         <div class="container">
             <p>&copy; 2024 ChessMate AI. Open Source Project.</p>
@@ -44,10 +44,11 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
     
-    <!-- Local Libraries -->
-    <script src="assets/js/lib/chess.js"></script>
+    <!-- Local Libraries (Must be in frontend/assets/js/lib/) -->
+    <!-- Make sure you have uploaded chess.min.js to frontend/assets/js/lib/ -->
+    <script src="assets/js/lib/chess.min.js"></script> 
 
-    <!-- Modular JavaScript Files (Core Logic) -->
+    <!-- Modular JavaScript Files -->
     <script src="assets/js/services/ApiService.js"></script>
     <script src="assets/js/services/RouterService.js"></script>
     <script src="assets/js/components/BoardComponent.js"></script>
