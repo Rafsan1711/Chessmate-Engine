@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessMate AI - Opening Explorer</title>
+    
+    <!-- External Libraries CSS (CDN) -->
+    <link rel="stylesheet" 
+      href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css"
+      crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-brand"><a href="#home">♔ ChessMate AI</a></h1>
+            <div class="nav-links">
+                <a href="#home" data-route="home" class="active">Home</a>
+                <a href="#explorer" data-route="explorer">Explorer</a>
+                <a href="https://github.com/Rafsan1711/Chessmate-Engine" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area (SPA Router will load content here) -->
+    <main id="app-container">
+        <!-- Content will be injected by JavaScript router -->
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 ChessMate AI. Open Source Project.</p>
+        </div>
+    </footer>
+
+    <!-- Core Libraries (Loaded from CDN) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
+    
+    <!-- Local Libraries -->
+    <script src="assets/js/lib/chess.min.js"></script>
+
+    <!-- Modular JavaScript Files (Core Logic) -->
+    <script src="assets/js/services/ApiService.js"></script>
+    <script src="assets/js/services/RouterService.js"></script>
+    <script src="assets/js/components/BoardComponent.js"></script>
+    <script src="assets/js/components/StatsTableComponent.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
