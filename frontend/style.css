@@ -1,0 +1,250 @@
+:root {
+    --color-primary: #1abc9c; /* Teal/Green */
+    --color-primary-dark: #16a085;
+    --color-background: #2c3e50; /* Dark Blue Gray */
+    --color-surface: #34495e; /* Lighter Surface */
+    --color-text: #ecf0f1;
+    --color-secondary: #f1c40f; /* Yellow */
+    --color-error: #e74c3c;
+    --color-success: #2ecc71;
+    --spacing-md: 1.5rem;
+    --spacing-sm: 1rem;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--color-primary-dark);
+}
+
+/* --- Layout & Container --- */
+.container {
+    max-width: 1200px;
+    width: 95%;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+}
+
+main {
+    flex: 1; /* Main content takes up available space */
+}
+
+/* --- Navigation Bar --- */
+.navbar {
+    background-color: var(--color-surface);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    padding: 0.8rem 0;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.nav-brand a {
+    color: var(--color-primary);
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.nav-links a {
+    color: var(--color-text);
+    margin-left: var(--spacing-md);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    background-color: var(--color-primary);
+    color: var(--color-background);
+}
+
+/* --- Page Content (Home & Explorer) --- */
+.page-content {
+    padding: var(--spacing-md) 0;
+}
+
+/* --- Home Page Styling --- */
+.hero-section {
+    padding: 50px 0;
+    text-align: center;
+}
+
+.hero-section h2 {
+    font-size: 3rem;
+    color: var(--color-secondary);
+    margin-bottom: 1rem;
+}
+
+.hero-section p {
+    font-size: 1.2rem;
+    color: var(--color-text);
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+.btn {
+    padding: 10px 25px;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 5px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background-color: var(--color-primary-dark);
+}
+
+/* --- Explorer Layout --- */
+.explorer-layout {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+}
+
+.board-area {
+    flex-shrink: 0;
+    background: var(--color-surface);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.stats-area {
+    flex-grow: 1;
+    min-width: 350px;
+    background: var(--color-surface);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.board-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
+}
+
+.board-controls button {
+    padding: 8px 15px;
+    background: var(--color-error);
+    border: none;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.board-controls button:hover {
+    background-color: var(--color-error);
+    filter: brightness(1.2);
+}
+
+/* --- Stats Table Styling --- */
+#statsTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.9rem;
+}
+
+#statsTable th, #statsTable td {
+    padding: 10px;
+    border-bottom: 1px solid var(--color-background);
+    text-align: left;
+}
+
+#statsTable th {
+    background-color: var(--color-primary-dark);
+    color: white;
+}
+
+#statsTable tr:hover {
+    background-color: var(--color-background);
+    cursor: pointer;
+}
+
+/* Win Rate Bars */
+.win-rate-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.bar-segment {
+    height: 100%;
+}
+
+.white-segment { background-color: #bdc3c7; } /* Light Gray */
+.draw-segment { background-color: #95a5a6; } /* Medium Gray */
+.black-segment { background-color: #34495e; } /* Dark Blue Gray */
+
+
+/* --- Footer --- */
+footer {
+    padding: 1rem 0;
+    text-align: center;
+    color: #95a5a6;
+    margin-top: auto;
+    border-top: 1px solid var(--color-surface);
+}
+
+
+/* --- Responsive Design --- */
+@media (max-width: 800px) {
+    .explorer-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .board-area, .stats-area {
+        width: 100%;
+    }
+
+    .nav-container {
+        flex-direction: column;
+    }
+    .nav-links {
+        margin-top: 10px;
+    }
+    .nav-links a {
+        margin: 0 8px;
+    }
+}
+
+@media (max-width: 450px) {
+    .board-area {
+        padding: 10px;
+    }
+    #myBoard {
+        width: 100% !important; /* Overwrite chessboard.js inline width */
+    }
+}
