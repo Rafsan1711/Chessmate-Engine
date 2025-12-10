@@ -1,4 +1,4 @@
-// File Path: frontend/assets/js/services/RouterService.js
+// File: frontend/assets/js/services/RouterService.js
 
 class RouterService {
     constructor(appContainerId) {
@@ -7,137 +7,95 @@ class RouterService {
         this.routes = {
             'home': this.getHomePageHTML(),
             'explorer': this.getExplorerPageHTML(),
-            'play': this.getPlayPageHTML(), 
+            'play': this.getPlayPageHTML(),
         };
     }
 
     loadRoute(route) {
         const routeKey = route.replace('#', '') || 'home';
-        
         if (this.routes[routeKey]) {
             this.appContainer.innerHTML = this.routes[routeKey];
             this.currentRoute = routeKey;
             
-            // ইনিশিয়ালাইজেশন
-            if (routeKey === 'explorer' && typeof window.initializeExplorer === 'function') {
-                setTimeout(window.initializeExplorer, 50); 
-            } else if (routeKey === 'play' && typeof window.initializeEngine === 'function') {
-                setTimeout(window.initializeEngine, 50);
-            }
-        } else {
-            this.appContainer.innerHTML = `<div class="container page-content"><h2>404 Not Found</h2></div>`;
+            // JS Init Call
+            if (routeKey === 'explorer' && window.initializeExplorer) setTimeout(window.initializeExplorer, 50);
+            if (routeKey === 'play' && window.initializeEngine) setTimeout(window.initializeEngine, 50);
         }
-        
         this.updateNavLinks(routeKey);
     }
     
-    updateNavLinks(activeKey) {
-        document.querySelectorAll('.nav-links a').forEach(link => {
-            if (link.getAttribute('data-route') === activeKey) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
+    updateNavLinks(key) {
+        document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
+        const activeLink = document.querySelector(`.nav-links a[data-route="${key}"]`);
+        if(activeLink) activeLink.classList.add('active');
     }
 
-    // --- HTML Templates ---
-    
     getHomePageHTML() {
         return `
-            <div class="container page-content hero-section">
-                <h2>Master Chess Openings</h2>
-                <p>
-                    Explore our vast opening database or challenge our ML-Powered Engine.
-                </p>
-                <div style="display: flex; gap: 20px; justify-content: center;">
-                    <a href="#explorer" class="btn" style="background-color: var(--color-primary);">Explore Database</a>
-                    <a href="#play" class="btn" style="background-color: var(--color-error);">Play vs Engine</a>
-                </div>
-            </div>
-        `;
+            <div class="container hero-section">
+                <h2>ChessMate Openings</h2>
+                <p>Analyze openings from 100,000+ master games.</p>
+                <a href="#explorer" class="btn">Start Explorer</a>
+            </div>`;
     }
 
     getExplorerPageHTML() {
-        // Explorer Page: Openings Stats (PGN Table)
         return `
-            <div class="container page-content">
-                <h2>Opening Explorer</h2>
-                <p>Click on a move row to play it and see the next position's statistics.</p>
+            <div class="container">
                 <div class="explorer-layout">
-                    
-                    <!-- Chess Board Area -->
+                    <!-- Board -->
                     <div class="board-area">
-                        <div id="myBoard" style="width: 400px; margin: 0 auto;"></div>
+                        <div id="myBoard" style="width: 100%; max-width: 450px; margin:0 auto;"></div>
                         <div class="board-controls">
-                            <button id="resetBtn">Reset</button>
-                            <button id="undoBtn">Undo</button>
-                            <button id="flipBtn">Flip</button>
+                            <button id="resetBtn" class="btn">Reset</button>
+                            <button id="undoBtn" class="btn">Undo</button>
+                            <button id="flipBtn" class="btn">Flip</button>
                         </div>
-                        <div id="status" class="status-box" style="margin-top: 15px;"></div>
+                        <div id="status" style="margin-top:10px; color:#f1c40f; font-weight:bold;"></div>
                     </div>
 
-                    <!-- Stats Area -->
+                    <!-- Stats -->
                     <div class="stats-area">
-                        <h3>Move-by-Move Analysis</h3>
-                        <div id="loading" style="display: none;">
-                            <span class="spinner"></span> 
-                            <span>Loading stats...</span>
-                        </div>
-                        <div id="moveHistory">Start position</div>
+                        <h3>Opening Explorer</h3>
+                        <div id="moveHistory" style="font-family:monospace; color:#ccc; margin-bottom:10px; min-height:20px;"></div>
                         
                         <table id="statsTable">
                             <thead>
                                 <tr>
-                                    <th>#</th>
                                     <th>Move</th>
-                                    <th>Total Games</th>
-                                    <th class="win-rate-bar-col">Win/Draw/Loss</th>
+                                    <th>Games</th>
+                                    <th>Win %</th>
+                                    <th>Draw %</th>
+                                    <th>Loss %</th>
                                 </tr>
                             </thead>
                             <tbody id="statsBody">
-                                <tr><td colspan="4">Loading...</td></tr>
+                                <!-- JS will populate this -->
                             </tbody>
                         </table>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     getPlayPageHTML() {
-        // Play Page: Player vs Engine
         return `
-            <div class="container page-content">
-                <h2>Play vs ChessMate AI Engine</h2>
-                <p>Play against a neural network trained on Lichess data.</p>
-                
+            <div class="container">
+                <h2>Play vs Engine</h2>
                 <div class="explorer-layout">
                     <div class="board-area">
-                        <div id="myBoard" style="width: 400px; margin: 0 auto;"></div>
+                        <div id="myBoard" style="width: 100%; max-width: 450px; margin:0 auto;"></div>
                         <div class="board-controls">
-                            <button id="newGameBtn">New Game</button>
-                            <button id="flipBtn">Flip</button>
+                            <button id="newGameBtn" class="btn">New Game</button>
+                            <button id="flipBtn" class="btn">Flip</button>
                         </div>
-                        <div id="status" class="status-box" style="margin-top: 15px;"></div>
+                        <div id="status" style="margin-top:10px; color:#f1c40f;"></div>
                     </div>
-                    
                     <div class="stats-area">
-                        <h3>Game Status</h3>
-                        <div id="engineStatus" style="color: var(--color-info);">
-                            Engine Status: Ready to Load Model
-                        </div>
-                        <div id="engineHistory" style="margin-top: 15px; font-family: monospace;">
-                            Game PGN will appear here.
-                        </div>
-                        <p style="margin-top: 20px;">
-                            <a href="#explorer" class="btn" style="background-color: var(--color-success); padding: 10px 20px;">Explore Position</a>
-                        </p>
+                        <div id="engineStatus">Loading AI...</div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 }
-
 window.routerService = new RouterService('app-container');
