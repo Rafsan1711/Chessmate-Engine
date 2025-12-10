@@ -1,8 +1,10 @@
+// File Path: frontend/assets/js/app.js
+
 let explorerBoard = null;
 let explorerStatsTable = null;
 
 /**
- * Explorer Page-এর জন্য Board/Stats কম্পোনেন্ট ইনিশিয়ালাইজ করে
+ * Explorer Page Initialization
  */
 window.initializeExplorer = function() {
     // StatustUpdate Callback function
@@ -11,15 +13,12 @@ window.initializeExplorer = function() {
         $('#moveHistory').text(pgn || 'Start position');
     };
     
-    // Move Select Callback function (when user clicks a move on the table)
     const onMoveSelect = (moveSAN) => {
         explorerBoard.makeMove(moveSAN);
     };
 
     // 1. Initialize Board
     explorerBoard = new BoardComponent('myBoard', fetchStatsForCurrentPosition, onStatusUpdate);
-    
-    // 2. Initialize Stats Table
     explorerStatsTable = new StatsTableComponent('statsBody', onMoveSelect);
 
     // 3. Setup Event Listeners
@@ -37,12 +36,11 @@ window.initializeExplorer = function() {
         explorerBoard.flip();
     });
     
-    // 4. Initial data load
     fetchStatsForCurrentPosition();
 };
 
 /**
- * বর্তমান FEN এর জন্য API কল করে ডেটা লোড করে
+ * Explorer Data Fetch
  */
 async function fetchStatsForCurrentPosition() {
     if (routerService.currentRoute !== 'explorer') return; 
@@ -55,19 +53,44 @@ async function fetchStatsForCurrentPosition() {
     explorerStatsTable.render(stats);
 }
 
+// --- নতুন ML Engine Page Init (Placeholder) ---
+window.initializeEngine = function() {
+    $('#engineStatus').text("Engine Loading: Model is not yet integrated. Please wait for the next step!");
+    
+    const onStatusUpdate = (statusText, pgn) => {
+        $('#status').text(statusText);
+        $('#engineHistory').text(pgn || 'Start new game');
+    };
+    
+    // 1. Engine Board
+    const engineBoard = new BoardComponent('myBoard', (move) => {
+        // Player moved, now the engine should move.
+        $('#engineStatus').text("AI Thinking... (Model integration pending)");
+        // Logic for AI move generation will go here
+    }, onStatusUpdate);
+
+    // 2. New Game Button
+    $('#newGameBtn').on('click', () => {
+        engineBoard.reset();
+    });
+    
+    $('#flipBtn').on('click', () => {
+        engineBoard.flip();
+    });
+    
+    // Note: ModelService.js and ONNX.js will be added in the next step.
+};
+
 /**
  * Main Application Init
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // HashChange Event Listener (Routing)
     const handleHashChange = () => {
         const hash = window.location.hash;
         routerService.loadRoute(hash);
     };
 
-    // প্রথম লোডের সময়
     handleHashChange();
     
-    // Hash change হলে
     window.addEventListener('hashchange', handleHashChange);
 });
