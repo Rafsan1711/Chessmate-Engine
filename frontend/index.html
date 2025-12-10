@@ -46,14 +46,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
     
     <!-- Local Libraries -->
-    <!-- Make sure you have uploaded chess.min.js to frontend/assets/js/lib/ -->
     <script src="assets/js/lib/chess.js"></script> 
+    
+    <!-- ML Library (ONNX.js for Model Inference) -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
 
     <!-- Modular JavaScript Files -->
     <script src="assets/js/services/ApiService.js"></script>
+    <script src="assets/js/services/ModelService.js"></script> <!-- New Model Service -->
     <script src="assets/js/services/RouterService.js"></script>
     <script src="assets/js/components/BoardComponent.js"></script>
     <script src="assets/js/components/StatsTableComponent.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
-    </html>
+</html>
