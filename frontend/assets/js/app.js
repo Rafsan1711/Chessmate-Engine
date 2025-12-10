@@ -53,9 +53,9 @@ async function fetchStatsForCurrentPosition() {
     explorerStatsTable.render(stats);
 }
 
-// --- নতুন ML Engine Page Init (Placeholder) ---
-window.initializeEngine = function() {
-    $('#engineStatus').text("Engine Loading: Model is not yet integrated. Please wait for the next step!");
+// --- নতুন ML Engine Page Init ---
+window.initializeEngine = async function() {
+    const engineStatusElement = $('#engineStatus');
     
     const onStatusUpdate = (statusText, pgn) => {
         $('#status').text(statusText);
@@ -63,22 +63,39 @@ window.initializeEngine = function() {
     };
     
     // 1. Engine Board
-    const engineBoard = new BoardComponent('myBoard', (move) => {
+    const engineBoard = new BoardComponent('myBoard', async (move) => {
         // Player moved, now the engine should move.
-        $('#engineStatus').text("AI Thinking... (Model integration pending)");
-        // Logic for AI move generation will go here
+        engineStatusElement.text("AI Thinking...");
+        
+        // Call ML Model
+        const gameInstance = engineBoard.getGame();
+        const { move: aiMove } = await window.modelService.getBestMove(gameInstance);
+        
+        if (aiMove) {
+            setTimeout(() => {
+                engineBoard.makeMove(aiMove);
+                engineStatusElement.text("AI Move Complete.");
+            }, 500);
+        } else {
+             engineStatusElement.text("Game Over or AI Error.");
+        }
+        
     }, onStatusUpdate);
 
+    // Load Model on Page Init
+    const modelLoaded = await window.modelService.loadModel((msg) => engineStatusElement.text(msg));
+    
     // 2. New Game Button
     $('#newGameBtn').on('click', () => {
         engineBoard.reset();
+        engineStatusElement.text("Engine Status: Ready.");
     });
     
     $('#flipBtn').on('click', () => {
         engineBoard.flip();
     });
     
-    // Note: ModelService.js and ONNX.js will be added in the next step.
+    if (modelLoaded) engineStatusElement.text("Engine Ready. White to Move.");
 };
 
 /**
