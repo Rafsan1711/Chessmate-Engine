@@ -41,19 +41,28 @@
         </div>
     </footer>
 
+    <!-- Sounds (As per your template) -->
+    <!-- The move logic in BoardComponent.js will look for these IDs -->
+    <audio id="moveSound" src="assets/audio/move.mp3"></audio>
+    <audio id="captureSound" src="assets/audio/capture.mp3"></audio>
+    <audio id="promoteSound" src="assets/audio/promote.mp3"></audio>
+    <audio id="castlingSound" src="assets/audio/castling.mp3"></audio>
+    <audio id="incorrectMoveSound" src="assets/audio/incorrect-move.mp3"></audio>
+    <audio id="checkSound" src="assets/audio/check.mp3"></audio>
+    <audio id="checkmateSound" src="assets/audio/checkmate.mp3"></audio>
+
     <!-- Core Libraries (Loaded from CDN) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
     
     <!-- Local Libraries -->
+    <!-- Note: chess.min.js must be in frontend/assets/js/lib/ -->
     <script src="assets/js/lib/chess.js"></script> 
-    
-    <!-- ML Library (ONNX.js for Model Inference) -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
 
     <!-- Modular JavaScript Files -->
     <script src="assets/js/services/ApiService.js"></script>
-    <script src="assets/js/services/ModelService.js"></script> <!-- New Model Service -->
+    <script src="assets/js/services/ModelService.js"></script> 
     <script src="assets/js/services/RouterService.js"></script>
     <script src="assets/js/components/BoardComponent.js"></script>
     <script src="assets/js/components/StatsTableComponent.js"></script>
