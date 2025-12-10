@@ -1,3 +1,5 @@
+// File Path: frontend/assets/js/services/RouterService.js
+
 class RouterService {
     constructor(appContainerId) {
         this.appContainer = document.getElementById(appContainerId);
@@ -5,7 +7,7 @@ class RouterService {
         this.routes = {
             'home': this.getHomePageHTML(),
             'explorer': this.getExplorerPageHTML(),
-            'play': this.getPlayPageHTML(), // নতুন পেজ
+            'play': this.getPlayPageHTML(), 
         };
     }
 
@@ -19,7 +21,7 @@ class RouterService {
             // ইনিশিয়ালাইজেশন
             if (routeKey === 'explorer' && typeof window.initializeExplorer === 'function') {
                 setTimeout(window.initializeExplorer, 50); 
-            } else if (routeKey === 'play' && typeof window.initializeEngine === 'function') { // নতুন ইনিশিয়ালাইজার
+            } else if (routeKey === 'play' && typeof window.initializeEngine === 'function') {
                 setTimeout(window.initializeEngine, 50);
             }
         } else {
@@ -88,14 +90,13 @@ class RouterService {
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>White Move</th>
-                                    <th>Black Move</th>
+                                    <th>Move</th>
                                     <th>Total Games</th>
                                     <th class="win-rate-bar-col">Win/Draw/Loss</th>
                                 </tr>
                             </thead>
                             <tbody id="statsBody">
-                                <tr><td colspan="5">Loading...</td></tr>
+                                <tr><td colspan="4">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -109,7 +110,7 @@ class RouterService {
         return `
             <div class="container page-content">
                 <h2>Play vs ChessMate AI Engine</h2>
-                <p>This feature requires the ML model (chess_model.onnx) to be loaded.</p>
+                <p>Play against a neural network trained on Lichess data.</p>
                 
                 <div class="explorer-layout">
                     <div class="board-area">
@@ -122,13 +123,16 @@ class RouterService {
                     </div>
                     
                     <div class="stats-area">
-                        <h3>Engine Status</h3>
+                        <h3>Game Status</h3>
                         <div id="engineStatus" style="color: var(--color-info);">
-                            Engine is not loaded (Feature Placeholder).
+                            Engine Status: Ready to Load Model
                         </div>
-                        <div id="engineHistory" style="margin-top: 15px;">
+                        <div id="engineHistory" style="margin-top: 15px; font-family: monospace;">
                             Game PGN will appear here.
                         </div>
+                        <p style="margin-top: 20px;">
+                            <a href="#explorer" class="btn" style="background-color: var(--color-success); padding: 10px 20px;">Explore Position</a>
+                        </p>
                     </div>
                 </div>
             </div>
