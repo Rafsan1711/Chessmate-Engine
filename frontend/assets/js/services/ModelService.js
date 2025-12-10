@@ -1,13 +1,13 @@
-// WASM পাথ সেটআপ
+// --- কনফিগারেশন (একদম শুরুতে থাকতে হবে) ---
+// 1. WASM ফাইলগুলো CDN থেকে লোড হবে
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
 
-// --- CRITICAL FIX: Threading Disable ---
-// এই দুটি লাইন আপনার "env.wasm.numThreads" এরর ফিক্স করবে
+// 2. থ্রেডিং ফিক্স (খুবই জরুরি)
+// ব্রাউজারে মাল্টি-থ্রেডিং এরর এড়াতে আমরা ১টি থ্রেড ব্যবহার করব
 ort.env.wasm.numThreads = 1; 
 ort.env.wasm.proxy = false;
-// -------------------------------------
 
-// মডেল পাথ
+// 3. মডেল পাথ
 const MODEL_PATH = "assets/chess_model.onnx"; 
 
 class ModelService {
@@ -19,34 +19,31 @@ class ModelService {
     async loadModel(statusCallback) {
         if (this.modelLoaded) return true;
 
-        if (statusCallback) statusCallback("Loading Engine resources...");
+        if (statusCallback) statusCallback("Connecting to Engine...");
         
         try {
-            // মডেল লোড করা
+            // মডেল লোড করার চেষ্টা (রি-ট্রাই সহ)
+            // অনেক সময় নেটওয়ার্ক স্লো থাকলে প্রথমবার ফেইল করে
             this.session = await ort.InferenceSession.create(MODEL_PATH);
             
             this.modelLoaded = true;
-            console.log("✅ ONNX Model Loaded!");
+            console.log("✅ ONNX Model Loaded Successfully!");
             
             if (statusCallback) statusCallback("Engine Ready. You are White.");
             return true;
         } catch (error) {
             console.error("❌ Failed to load Model:", error);
             
-            let msg = "Engine Error.";
-            // নির্দিষ্ট এরর মেসেজ
-            if (error.message && error.message.includes("404")) {
-                msg = "Error: 'assets/chess_model.onnx' not found.";
-            } else if (error.name === "NotSupportedError") {
-                msg = "Browser not supported (WebAssembly missing).";
-            }
+            let msg = "Engine failed to load.";
+            if (error.message.includes("404")) msg = "Error: 'chess_model.onnx' missing in assets.";
+            else if (error.message.includes("Failed to fetch")) msg = "Network Error: Check internet connection.";
             
             if (statusCallback) statusCallback(msg);
             return false;
         }
     }
     
-    // FEN to Tensor
+    // FEN to Tensor কনভার্টার
     fenToTensor(fen) {
         const position = fen.split(' ')[0];
         const board = new Float32Array(12 * 8 * 8);
@@ -74,27 +71,32 @@ class ModelService {
             const inputTensor = this.fenToTensor(fen);
             const results = await this.session.run({ board_state: inputTensor });
             const score = results.evaluation.data[0];
+            // কালোর চাল হলে স্কোর উল্টে যাবে
             return fen.split(' ')[1] === 'b' ? -score : score;
         } catch (e) { return 0; }
     }
     
     async getBestMove(game) {
+        // মডেল না থাকলে সেফটি চেক
         if (!this.modelLoaded) {
-            // মডেল না থাকলে র‍্যান্ডম মুভ
+            console.warn("Model not loaded yet.");
             const moves = game.moves();
+            if(moves.length === 0) return { move: null, score: 0 };
             return { move: moves[Math.floor(Math.random() * moves.length)], score: 0 };
         }
         
-        // মডেল থাকলে সব মুভ চেক করা
         const moves = game.moves({ verbose: true });
-        let bestMove = null;
+        if (moves.length === 0) return { move: null, score: 0 };
+
+        let bestMove = moves[0];
         let bestScore = -Infinity;
         
-        // সব মুভ লুপ করা
+        // সব মুভ চেক করা
         for (const move of moves) {
             game.move(move);
-            // Negamax: -evaluate()
-            const score = - (await this.evaluate(game.fen()));
+            // Negamax Logic: -evaluate()
+            const evalVal = await this.evaluate(game.fen());
+            const score = -evalVal;
             game.undo();
             
             if (score > bestScore) {
@@ -103,9 +105,6 @@ class ModelService {
             }
         }
         
-        // যদি কোনো কারণে মুভ না পাওয়া যায় (যেমন চেকমেট), তবুও সেফটি চেক
-        if (!bestMove && moves.length > 0) bestMove = moves[0];
-
         return { move: bestMove, score: bestScore };
     }
 }
