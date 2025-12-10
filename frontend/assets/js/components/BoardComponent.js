@@ -24,7 +24,7 @@ class BoardComponent {
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this),
-            // --- লোকাল পিস ইমেজ পাথ ফিক্সড ---
+            // --- লোকাল পিস ইমেজ পাথ ফাইনাল ফিক্স ---
             pieceTheme: 'assets/img/pieces/{piece}.svg' 
         };
 
@@ -32,6 +32,7 @@ class BoardComponent {
         this.updateStatus();
     }
     
+    // ... (onDragStart, onDrop, onSnapEnd, makeMove, undoMove, reset, flip অপরিবর্তিত) ...
     onDragStart (source, piece) {
       if (this.game.game_over()) return false;
       if ((this.game.turn() === 'w' && piece.search(/^b/) !== -1) ||
@@ -100,7 +101,6 @@ class BoardComponent {
     // --- হেল্পার ফাংশন ---
     
     playSound(move) {
-        // সাউন্ড প্লে করার ফিক্স
         this.sounds.check.currentTime = 0;
         this.sounds.capture.currentTime = 0;
         this.sounds.move.currentTime = 0;
@@ -119,9 +119,6 @@ class BoardComponent {
         $(`#${this.boardId} .square-${source}`).addClass('highlight-square');
         $(`#${this.boardId} .square-${target}`).addClass('highlight-square');
         if (this.game.in_check()) {
-             // চেক স্কোয়ার হাইলাইট করার জন্য King এর স্কোয়ার বের করতে হবে
-             // Note: chess.js এ এই ফাংশন নেই, কিন্তু আমরা টেম্পোরারি ফিক্স ব্যবহার করতে পারি
-             // এই মুহূর্তে, শুধু check হলে লাল বর্ডার দিলেই হবে
              $(`#${this.boardId} .square-55d63`).addClass('in-check');
         }
     }
@@ -145,7 +142,6 @@ class BoardComponent {
             }
         }
         
-        // PGN স্ট্রিং
         this.onStatusUpdate(status, this.game.pgn());
     }
 
