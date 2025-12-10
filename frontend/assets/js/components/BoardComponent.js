@@ -7,6 +7,7 @@ class BoardComponent {
         this.board = null;
         
         // --- সাউন্ড সেটআপ ---
+        // সাউন্ড ফাইলগুলো assets/audio/ ফোল্ডারে আছে
         this.sounds = {
             move: new Audio('assets/audio/move.mp3'),
             capture: new Audio('assets/audio/capture.mp3'),
@@ -23,6 +24,7 @@ class BoardComponent {
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this),
             // --- লোকাল পিস ইমেজ পাথ ---
+            // pieces/ ফোল্ডারে wP.svg, bK.svg ইত্যাদি ফাইল থাকতে হবে
             pieceTheme: 'assets/img/pieces/{piece}.svg' 
         };
 
@@ -39,9 +41,6 @@ class BoardComponent {
     }
 
     onDrop (source, target) {
-      // মুভের আগে পজিশন সেভ
-      const preMoveFen = this.game.fen();
-      
       var move = this.game.move({
         from: source,
         to: target,
@@ -52,9 +51,9 @@ class BoardComponent {
           return 'snapback'; 
       }
       
-      this.playSound(move); // সাউন্ড বাজানো
+      this.playSound(move);
       this.updateStatus();
-      this.highlightLastMove(move.from, move.to); // লাস্ট মুভ হাইলাইট
+      this.highlightLastMove(move.from, move.to);
       
       if (this.onMoveCallback) {
           this.onMoveCallback(move); 
@@ -101,6 +100,11 @@ class BoardComponent {
     // --- হেল্পার ফাংশন ---
     
     playSound(move) {
+        // প্লে করার আগে রিসেট করতে হবে, না হলে সাউন্ড কেটে যায়
+        this.sounds.check.currentTime = 0;
+        this.sounds.capture.currentTime = 0;
+        this.sounds.move.currentTime = 0;
+        
         if (this.game.in_check()) {
             this.sounds.check.play();
         } else if (move.captured) {
@@ -115,14 +119,29 @@ class BoardComponent {
         $(`#${this.boardId} .square-${source}`).addClass('highlight-square');
         $(`#${this.boardId} .square-${target}`).addClass('highlight-square');
         if (this.game.in_check()) {
-             // চেক স্কোয়ার হাইলাইট করার লজিক (ঐচ্ছিক)
-             const kingSquare = this.game.kingSquare();
-             $(`#${this.boardId} .square-${kingSquare}`).addClass('in-check');
+             // Kings square
+             const kingColor = this.game.turn() === 'w' ? 'b' : 'w';
+             const kingSquare = this.game.getKingSquare(kingColor);
+             if(kingSquare) $(`#${this.boardId} .square-${kingSquare}`).addClass('in-check');
         }
     }
     
     clearHighlights() {
         $(`#${this.boardId} .square-55d63`).removeClass('highlight-square in-check');
+    }
+    
+    // FEN থেকে Kings Square বের করার জন্য এক্সটেনশন
+    getKingSquare(color) {
+        const piece = color === 'w' ? 'K' : 'k';
+        let kingSquare = null;
+        this.game.board().forEach(row => {
+            row.forEach(square => {
+                if(square && square.type === piece.toLowerCase() && square.color === kingColor) {
+                    kingSquare = square.square;
+                }
+            })
+        });
+        return kingSquare;
     }
 
     updateStatus () {
