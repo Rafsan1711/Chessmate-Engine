@@ -1,13 +1,11 @@
-// --- কনফিগারেশন (একদম শুরুতে থাকতে হবে) ---
-// 1. WASM ফাইলগুলো CDN থেকে লোড হবে
+// --- কনফিগারেশন ---
+// WASM ফাইলগুলো CDN থেকে লোড হবে
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
 
-// 2. থ্রেডিং ফিক্স (খুবই জরুরি)
-// ব্রাউজারে মাল্টি-থ্রেডিং এরর এড়াতে আমরা ১টি থ্রেড ব্যবহার করব
+// থ্রেডিং ফিক্স (অবশ্যই ১ হতে হবে)
 ort.env.wasm.numThreads = 1; 
 ort.env.wasm.proxy = false;
 
-// 3. মডেল পাথ
 const MODEL_PATH = "assets/chess_model.onnx"; 
 
 class ModelService {
@@ -19,11 +17,16 @@ class ModelService {
     async loadModel(statusCallback) {
         if (this.modelLoaded) return true;
 
-        if (statusCallback) statusCallback("Connecting to Engine...");
+        if (statusCallback) statusCallback("Loading Engine resources...");
         
         try {
-            // মডেল লোড করার চেষ্টা (রি-ট্রাই সহ)
-            // অনেক সময় নেটওয়ার্ক স্লো থাকলে প্রথমবার ফেইল করে
+            // মডেল ফাইলের অস্তিত্ব চেক করা (Optional Fetch Check)
+            const response = await fetch(MODEL_PATH, { method: 'HEAD' });
+            if (!response.ok) {
+                throw new Error(`Model file not found (Status: ${response.status})`);
+            }
+
+            // মডেল সেশন তৈরি
             this.session = await ort.InferenceSession.create(MODEL_PATH);
             
             this.modelLoaded = true;
@@ -31,19 +34,34 @@ class ModelService {
             
             if (statusCallback) statusCallback("Engine Ready. You are White.");
             return true;
+
         } catch (error) {
             console.error("❌ Failed to load Model:", error);
             
-            let msg = "Engine failed to load.";
-            if (error.message.includes("404")) msg = "Error: 'chess_model.onnx' missing in assets.";
-            else if (error.message.includes("Failed to fetch")) msg = "Network Error: Check internet connection.";
+            // সেইফ এরর মেসেজ হ্যান্ডলিং (ক্র্যাশ ফিক্স)
+            let errorText = "Unknown Error";
+            if (typeof error === "string") {
+                errorText = error;
+            } else if (error && error.message) {
+                errorText = error.message;
+            } else {
+                errorText = JSON.stringify(error);
+            }
+
+            let userMsg = "Engine failed to load.";
+            if (errorText.includes("404") || errorText.includes("not found")) {
+                userMsg = "Error: 'chess_model.onnx' not found in assets.";
+            } else if (errorText.includes("network") || errorText.includes("fetch")) {
+                userMsg = "Network Error: Check connection.";
+            } else if (errorText.includes("magic number")) {
+                userMsg = "Error: Invalid ONNX file (Corrupted/LFS pointer).";
+            }
             
-            if (statusCallback) statusCallback(msg);
+            if (statusCallback) statusCallback(userMsg);
             return false;
         }
     }
     
-    // FEN to Tensor কনভার্টার
     fenToTensor(fen) {
         const position = fen.split(' ')[0];
         const board = new Float32Array(12 * 8 * 8);
@@ -71,17 +89,14 @@ class ModelService {
             const inputTensor = this.fenToTensor(fen);
             const results = await this.session.run({ board_state: inputTensor });
             const score = results.evaluation.data[0];
-            // কালোর চাল হলে স্কোর উল্টে যাবে
             return fen.split(' ')[1] === 'b' ? -score : score;
         } catch (e) { return 0; }
     }
     
     async getBestMove(game) {
-        // মডেল না থাকলে সেফটি চেক
         if (!this.modelLoaded) {
-            console.warn("Model not loaded yet.");
             const moves = game.moves();
-            if(moves.length === 0) return { move: null, score: 0 };
+            if (moves.length === 0) return { move: null, score: 0 };
             return { move: moves[Math.floor(Math.random() * moves.length)], score: 0 };
         }
         
@@ -91,10 +106,8 @@ class ModelService {
         let bestMove = moves[0];
         let bestScore = -Infinity;
         
-        // সব মুভ চেক করা
         for (const move of moves) {
             game.move(move);
-            // Negamax Logic: -evaluate()
             const evalVal = await this.evaluate(game.fen());
             const score = -evalVal;
             game.undo();
@@ -104,7 +117,6 @@ class ModelService {
                 bestMove = move;
             }
         }
-        
         return { move: bestMove, score: bestScore };
     }
 }
