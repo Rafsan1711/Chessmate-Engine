@@ -6,7 +6,6 @@
     <title>ChessMate AI - Opening Explorer</title>
     
     <!-- External Libraries CSS (CDN) -->
-    <!-- এখন আমরা লোকাল CSS ব্যবহার করব, তাই chessboard.js এর থিম CDN থেকে নিলাম না -->
     <link rel="stylesheet" 
       href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css"
       crossorigin="anonymous">
@@ -24,6 +23,7 @@
             <div class="nav-links">
                 <a href="#home" data-route="home" class="active">Home</a>
                 <a href="#explorer" data-route="explorer">Explorer</a>
+                <a href="#play" data-route="play">Play vs Engine</a>
                 <a href="https://github.com/Rafsan1711/Chessmate-Engine" target="_blank">GitHub</a>
             </div>
         </div>
@@ -46,6 +46,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
     
     <!-- Local Libraries -->
+    <!-- Make sure you have uploaded chess.min.js to frontend/assets/js/lib/ -->
     <script src="assets/js/lib/chess.js"></script> 
 
     <!-- Modular JavaScript Files -->
@@ -55,4 +56,4 @@
     <script src="assets/js/components/StatsTableComponent.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
-</html>
+    </html>
