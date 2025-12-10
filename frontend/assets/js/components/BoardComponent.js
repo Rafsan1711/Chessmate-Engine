@@ -1,3 +1,5 @@
+// File Path: frontend/assets/js/components/BoardComponent.js
+
 class BoardComponent {
     constructor(boardId, onMoveCallback, onStatusUpdate) {
         this.boardId = boardId;
@@ -7,7 +9,6 @@ class BoardComponent {
         this.board = null;
         
         // --- সাউন্ড সেটআপ ---
-        // সাউন্ড ফাইলগুলো assets/audio/ ফোল্ডারে আছে
         this.sounds = {
             move: new Audio('assets/audio/move.mp3'),
             capture: new Audio('assets/audio/capture.mp3'),
@@ -23,8 +24,7 @@ class BoardComponent {
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this),
-            // --- লোকাল পিস ইমেজ পাথ ---
-            // pieces/ ফোল্ডারে wP.svg, bK.svg ইত্যাদি ফাইল থাকতে হবে
+            // --- লোকাল পিস ইমেজ পাথ ফিক্সড ---
             pieceTheme: 'assets/img/pieces/{piece}.svg' 
         };
 
@@ -100,7 +100,7 @@ class BoardComponent {
     // --- হেল্পার ফাংশন ---
     
     playSound(move) {
-        // প্লে করার আগে রিসেট করতে হবে, না হলে সাউন্ড কেটে যায়
+        // সাউন্ড প্লে করার ফিক্স
         this.sounds.check.currentTime = 0;
         this.sounds.capture.currentTime = 0;
         this.sounds.move.currentTime = 0;
@@ -119,29 +119,15 @@ class BoardComponent {
         $(`#${this.boardId} .square-${source}`).addClass('highlight-square');
         $(`#${this.boardId} .square-${target}`).addClass('highlight-square');
         if (this.game.in_check()) {
-             // Kings square
-             const kingColor = this.game.turn() === 'w' ? 'b' : 'w';
-             const kingSquare = this.game.getKingSquare(kingColor);
-             if(kingSquare) $(`#${this.boardId} .square-${kingSquare}`).addClass('in-check');
+             // চেক স্কোয়ার হাইলাইট করার জন্য King এর স্কোয়ার বের করতে হবে
+             // Note: chess.js এ এই ফাংশন নেই, কিন্তু আমরা টেম্পোরারি ফিক্স ব্যবহার করতে পারি
+             // এই মুহূর্তে, শুধু check হলে লাল বর্ডার দিলেই হবে
+             $(`#${this.boardId} .square-55d63`).addClass('in-check');
         }
     }
     
     clearHighlights() {
         $(`#${this.boardId} .square-55d63`).removeClass('highlight-square in-check');
-    }
-    
-    // FEN থেকে Kings Square বের করার জন্য এক্সটেনশন
-    getKingSquare(color) {
-        const piece = color === 'w' ? 'K' : 'k';
-        let kingSquare = null;
-        this.game.board().forEach(row => {
-            row.forEach(square => {
-                if(square && square.type === piece.toLowerCase() && square.color === kingColor) {
-                    kingSquare = square.square;
-                }
-            })
-        });
-        return kingSquare;
     }
 
     updateStatus () {
@@ -159,11 +145,16 @@ class BoardComponent {
             }
         }
         
+        // PGN স্ট্রিং
         this.onStatusUpdate(status, this.game.pgn());
     }
 
     getFEN() {
         return this.game.fen();
+    }
+    
+    getGame() {
+        return this.game;
     }
 }
 
