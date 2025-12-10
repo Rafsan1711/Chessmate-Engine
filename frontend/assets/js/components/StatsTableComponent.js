@@ -15,8 +15,9 @@ class StatsTableComponent {
             return;
         }
 
+        // মোট গেমস দিয়ে সর্ট করা
         const moves = Object.entries(stats.moves)
-            .sort(([,a], [,b]) => (b.white + b.black + b.draw) - (a.white + a.black + a.draw)); // মোট গেমস দিয়ে সর্ট
+            .sort(([,a], [,b]) => (b.white + b.black + b.draw) - (a.white + a.black + a.draw)); 
 
         moves.forEach(([moveSAN, data]) => {
             const total = data.white + data.black + data.draw;
@@ -48,13 +49,13 @@ class StatsTableComponent {
         const winRateBarHTML = `
             <div class="win-rate-bar">
                 <div class="bar-segment white-segment" style="width: ${wPct.toFixed(1)}%;">
-                    ${wPct > 5 ? wPct.toFixed(0) + '%' : ''}
+                    ${wPct > 10 ? wPct.toFixed(0) + '%' : ''}
                 </div>
                 <div class="bar-segment draw-segment" style="width: ${dPct.toFixed(1)}%;">
-                    ${dPct > 5 ? dPct.toFixed(0) + '%' : ''}
+                    ${dPct > 10 ? dPct.toFixed(0) + '%' : ''}
                 </div>
                 <div class="bar-segment black-segment" style="width: ${bPct.toFixed(1)}%;">
-                    ${bPct > 5 ? bPct.toFixed(0) + '%' : ''}
+                    ${bPct > 10 ? bPct.toFixed(0) + '%' : ''}
                 </div>
             </div>
         `;
