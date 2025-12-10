@@ -5,6 +5,7 @@ class RouterService {
         this.routes = {
             'home': this.getHomePageHTML(),
             'explorer': this.getExplorerPageHTML(),
+            'play': this.getPlayPageHTML(), // নতুন পেজ
         };
     }
 
@@ -15,10 +16,11 @@ class RouterService {
             this.appContainer.innerHTML = this.routes[routeKey];
             this.currentRoute = routeKey;
             
-            // UI আপডেটের পর Explorer ইনিশিয়ালাইজ করবে
+            // ইনিশিয়ালাইজেশন
             if (routeKey === 'explorer' && typeof window.initializeExplorer === 'function') {
-                // jQuery-কে ইনিশিয়ালাইজ করার সুযোগ দিতে setTimeout ব্যবহার করা হলো
                 setTimeout(window.initializeExplorer, 50); 
+            } else if (routeKey === 'play' && typeof window.initializeEngine === 'function') { // নতুন ইনিশিয়ালাইজার
+                setTimeout(window.initializeEngine, 50);
             }
         } else {
             this.appContainer.innerHTML = `<div class="container page-content"><h2>404 Not Found</h2></div>`;
@@ -44,19 +46,22 @@ class RouterService {
             <div class="container page-content hero-section">
                 <h2>Master Chess Openings</h2>
                 <p>
-                    Explore ${window.globalData ? Object.keys(window.globalData).length.toLocaleString() : '140,000+'} unique positions 
-                    from over 100,000 high-rated Lichess games.
-                    Analyze win rates, draws, and black's winning chances for any position.
+                    Explore our vast opening database or challenge our ML-Powered Engine.
                 </p>
-                <a href="#explorer" class="btn">Start Exploring Now</a>
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <a href="#explorer" class="btn" style="background-color: var(--color-primary);">Explore Database</a>
+                    <a href="#play" class="btn" style="background-color: var(--color-error);">Play vs Engine</a>
+                </div>
             </div>
         `;
     }
 
     getExplorerPageHTML() {
+        // Explorer Page: Openings Stats (PGN Table)
         return `
             <div class="container page-content">
                 <h2>Opening Explorer</h2>
+                <p>Click on a move row to play it and see the next position's statistics.</p>
                 <div class="explorer-layout">
                     
                     <!-- Chess Board Area -->
@@ -67,12 +72,12 @@ class RouterService {
                             <button id="undoBtn">Undo</button>
                             <button id="flipBtn">Flip</button>
                         </div>
-                        <div id="status" class="status-box" style="margin-top: 15px;">White to move</div>
+                        <div id="status" class="status-box" style="margin-top: 15px;"></div>
                     </div>
 
                     <!-- Stats Area -->
                     <div class="stats-area">
-                        <h3>Position Analysis</h3>
+                        <h3>Move-by-Move Analysis</h3>
                         <div id="loading" style="display: none;">
                             <span class="spinner"></span> 
                             <span>Loading stats...</span>
@@ -82,17 +87,47 @@ class RouterService {
                         <table id="statsTable">
                             <thead>
                                 <tr>
-                                    <th>Move</th>
-                                    <th>Games</th>
-                                    <th>Win/Draw/Loss %</th>
+                                    <th>#</th>
+                                    <th>White Move</th>
+                                    <th>Black Move</th>
+                                    <th>Total Games</th>
+                                    <th class="win-rate-bar-col">Win/Draw/Loss</th>
                                 </tr>
                             </thead>
                             <tbody id="statsBody">
-                                <tr><td colspan="3">Loading...</td></tr>
+                                <tr><td colspan="5">Loading...</td></tr>
                             </tbody>
                         </table>
-                        <div style="font-size: 0.8em; margin-top: 10px; color: #95a5a6;">
-                            Click on a move row to play it on the board.
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getPlayPageHTML() {
+        // Play Page: Player vs Engine
+        return `
+            <div class="container page-content">
+                <h2>Play vs ChessMate AI Engine</h2>
+                <p>This feature requires the ML model (chess_model.onnx) to be loaded.</p>
+                
+                <div class="explorer-layout">
+                    <div class="board-area">
+                        <div id="myBoard" style="width: 400px; margin: 0 auto;"></div>
+                        <div class="board-controls">
+                            <button id="newGameBtn">New Game</button>
+                            <button id="flipBtn">Flip</button>
+                        </div>
+                        <div id="status" class="status-box" style="margin-top: 15px;"></div>
+                    </div>
+                    
+                    <div class="stats-area">
+                        <h3>Engine Status</h3>
+                        <div id="engineStatus" style="color: var(--color-info);">
+                            Engine is not loaded (Feature Placeholder).
+                        </div>
+                        <div id="engineHistory" style="margin-top: 15px;">
+                            Game PGN will appear here.
                         </div>
                     </div>
                 </div>
