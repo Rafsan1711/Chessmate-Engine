@@ -48,12 +48,13 @@ async function fetchStatsForCurrentPosition() {
     const fen = explorerBoard.getFEN();
     explorerStatsTable.setLoading();
     
+    // FEN Fix: Clean FEN is handled by ApiService internally
     const stats = await window.apiService.getOpeningStats(fen);
     
     explorerStatsTable.render(stats);
 }
 
-// --- নতুন ML Engine Page Init ---
+// --- ML Engine Page Init (Final Logic) ---
 window.initializeEngine = async function() {
     const engineStatusElement = $('#engineStatus');
     
@@ -62,19 +63,29 @@ window.initializeEngine = async function() {
         $('#engineHistory').text(pgn || 'Start new game');
     };
     
-    // 1. Engine Board
+    // 1. Engine Board (onMoveCallback handles AI response)
     const engineBoard = new BoardComponent('myBoard', async (move) => {
         // Player moved, now the engine should move.
-        engineStatusElement.text("AI Thinking...");
-        
-        // Call ML Model
         const gameInstance = engineBoard.getGame();
-        const { move: aiMove } = await window.modelService.getBestMove(gameInstance);
+        
+        if (gameInstance.game_over()) {
+             engineStatusElement.text("Game Over!");
+             return;
+        }
+        
+        engineStatusElement.text("AI Thinking... (Depth 3)");
+        
+        // AI Move generation call
+        const { move: aiMove, score } = await window.modelService.getBestMove(gameInstance);
         
         if (aiMove) {
             setTimeout(() => {
                 engineBoard.makeMove(aiMove);
-                engineStatusElement.text("AI Move Complete.");
+                engineStatusElement.text(`AI Move: ${aiMove.san} (Eval: ${score.toFixed(2)})`);
+                
+                if (gameInstance.game_over()) {
+                    engineStatusElement.text("Game Over!");
+                }
             }, 500);
         } else {
              engineStatusElement.text("Game Over or AI Error.");
@@ -88,7 +99,7 @@ window.initializeEngine = async function() {
     // 2. New Game Button
     $('#newGameBtn').on('click', () => {
         engineBoard.reset();
-        engineStatusElement.text("Engine Status: Ready.");
+        engineStatusElement.text(modelLoaded ? "Engine Ready. White to Move." : "Engine Error. Basic play available.");
     });
     
     $('#flipBtn').on('click', () => {
