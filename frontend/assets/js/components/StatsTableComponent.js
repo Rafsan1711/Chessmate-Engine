@@ -1,4 +1,4 @@
-// File Path: frontend/assets/js/components/StatsTableComponent.js
+// File: frontend/assets/js/components/StatsTableComponent.js
 
 class StatsTableComponent {
     constructor(tableBodyId, onMoveSelect) {
@@ -6,77 +6,75 @@ class StatsTableComponent {
         this.onMoveSelect = onMoveSelect;
     }
 
-    render(stats) {
-        const loadingElement = document.getElementById('loading');
-        if (loadingElement) loadingElement.style.display = 'none';
+    render(stats, currentTurn) {
+        // লোডিং বা এরর মেসেজ ক্লিয়ার করা
+        this.tableBody.innerHTML = '';
 
-        this.tableBody.innerHTML = ''; 
-
+        // যদি কোনো স্ট্যাটস না থাকে
         if (!stats || !stats.moves || Object.keys(stats.moves).length === 0) {
-            this.tableBody.innerHTML = '<tr><td colspan="4">No stats found for this deep or rare position.</td></tr>';
+            this.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align:center; padding: 20px; color: #7f8c8d;">
+                        No games found in database for this position.
+                    </td>
+                </tr>`;
             return;
         }
 
-        const moves = Object.entries(stats.moves)
-            .sort(([,a], [,b]) => (b.white + b.black + b.draw) - (a.white + a.black + a.draw)); 
-        
-        let moveIndex = 0; // PGN move number
-        
-        moves.forEach(([moveSAN, data]) => {
-            moveIndex++;
+        // 1. ডেটা প্রসেসিং: অবজেক্ট থেকে অ্যারেতে নেওয়া এবং সর্ট করা (জনপ্রিয়তা অনুযায়ী)
+        const movesArray = Object.entries(stats.moves).map(([san, data]) => {
             const total = data.white + data.black + data.draw;
-            
-            const whitePct = (data.white / total) * 100;
-            const drawPct = (data.draw / total) * 100;
-            const blackPct = (data.black / total) * 100;
+            return {
+                san: san, // e4, Nf3 etc.
+                total: total,
+                whitePct: (data.white / total) * 100,
+                drawPct: (data.draw / total) * 100,
+                blackPct: (data.black / total) * 100
+            };
+        }).sort((a, b) => b.total - a.total);
 
-            const row = this.createRow(moveSAN, total, whitePct, drawPct, blackPct, moveIndex);
+        // 2. টেবিল রেন্ডারিং
+        // এখানে আমরা ক্যান্ডিডেট মুভ দেখাচ্ছি (Explorer Mode)
+        // আপনি যদি হিস্ট্রি চান, সেটা আলাদা প্যানেলে PGN হিসেবে আছে।
+        // এক্সপ্লোরারে আমরা দেখাই: "এই পজিশনে মানুষ কী কী চাল দিয়েছে"
+        
+        movesArray.forEach((move) => {
+            const row = document.createElement('tr');
+            row.style.cursor = 'pointer';
+            
+            // Win Rate Bar (Visual)
+            const barHTML = `
+                <div style="display:flex; height:8px; width:100%; border-radius:2px; overflow:hidden; background:#444;">
+                    <div style="width:${move.whitePct}%; background:#bdc3c7;" title="White Won"></div>
+                    <div style="width:${move.drawPct}%; background:#7f8c8d;" title="Draw"></div>
+                    <div style="width:${move.blackPct}%; background:#2c3e50;" title="Black Won"></div>
+                </div>
+            `;
+
+            row.innerHTML = `
+                <td style="font-weight:bold; color:#f1c40f;">${move.san}</td>
+                <td>${move.total.toLocaleString()}</td>
+                <td style="font-size:0.85em; color:#2ecc71;">${move.whitePct.toFixed(0)}%</td>
+                <td style="font-size:0.85em; color:#95a5a6;">${move.drawPct.toFixed(0)}%</td>
+                <td style="font-size:0.85em; color:#e74c3c;">${move.blackPct.toFixed(0)}%</td>
+            `;
+
+            // ক্লিকে মুভ করা
+            row.addEventListener('click', () => {
+                if(this.onMoveSelect) this.onMoveSelect(move.san);
+            });
+
             this.tableBody.appendChild(row);
         });
-        
-        // ক্লিক লিসেনার যুক্ত করা
-        this.tableBody.querySelectorAll('tr').forEach(row => {
-            row.addEventListener('click', () => {
-                const moveSAN = row.getAttribute('data-move');
-                if (moveSAN && this.onMoveSelect) {
-                    this.onMoveSelect(moveSAN);
-                }
-            });
-        });
     }
-    
-    // PGN-Style Row (প্রতিটি মুভ একটি নতুন পজিশন থেকে আসছে, তাই এটিই PGN-Explorer স্ট্যান্ডার্ড)
-    createRow(moveSAN, total, wPct, dPct, bPct, moveIndex) {
-        const row = document.createElement('tr');
-        row.setAttribute('data-move', moveSAN);
-        
-        const winRateBarHTML = `
-            <div class="win-rate-bar">
-                <div class="bar-segment white-segment" style="width: ${wPct.toFixed(1)}%;">
-                    ${wPct > 10 ? wPct.toFixed(0) + '%' : ''}
-                </div>
-                <div class="bar-segment draw-segment" style="width: ${dPct.toFixed(1)}%;">
-                    ${dPct > 10 ? dPct.toFixed(0) + '%' : ''}
-                </div>
-                <div class="bar-segment black-segment" style="width: ${bPct.toFixed(1)}%;">
-                    ${bPct > 10 ? bPct.toFixed(0) + '%' : ''}
-                </div>
-            </div>
-        `;
-        
-        row.innerHTML = `
-            <td>${moveIndex}.</td>
-            <td class="pgn-move-cell">${moveSAN}</td>
-            <td>${total.toLocaleString()}</td>
-            <td class="win-rate-bar-col">${winRateBarHTML}</td>
-        `;
-        return row;
-    }
-    
+
     setLoading() {
-        const loadingElement = document.getElementById('loading');
-        if (loadingElement) loadingElement.style.display = 'flex';
-        this.tableBody.innerHTML = '<tr><td colspan="4"></td></tr>';
+        this.tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center; padding: 20px;">
+                    Loading statistics...
+                </td>
+            </tr>`;
     }
 }
 
