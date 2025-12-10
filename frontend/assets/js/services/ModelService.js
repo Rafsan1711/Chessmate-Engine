@@ -1,48 +1,57 @@
 // File Path: frontend/assets/js/services/ModelService.js
 
-// আপনার আপলোড করা মডেলের URL এখানে বসানো হলো
-const MODEL_URL = "https://huggingface.co/models/Rafs-an09002/chessmate-model/resolve/main/chess_model.onnx";
-const AI_DEPTH = 3; // AI কত চাল সামনে ভাববে (ফ্রি সার্ভারের জন্য ৩-৪ ভালো)
+// 1. WASM ফাইলের লোকেশন সেট করা (CDN থেকে) - এটা "Model failed to load" ফিক্স করবে
+ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
+
+// 2. আপনার লোকাল মডেলের পাথ
+const MODEL_PATH = "assets/chess_model.onnx"; 
+const AI_DEPTH = 2; // ফাস্ট রেসপন্সের জন্য ২ বা ৩ রাখুন
 
 class ModelService {
     constructor() {
         this.session = null;
         this.modelLoaded = false;
-        this.modelURL = MODEL_URL;
     }
 
     async loadModel(statusCallback) {
         if (this.modelLoaded) return true;
 
-        statusCallback("Loading AI Model (7MB)...");
+        if (statusCallback) statusCallback("Loading Engine resources...");
         
-        // ort (onnxruntime-web) CDN থেকে লোড হবে
         try {
-            this.session = await ort.InferenceSession.create(this.modelURL);
+            // মডেল লোড করার চেষ্টা
+            console.log(`Attempting to load model from: ${window.location.origin}/${MODEL_PATH}`);
+            
+            this.session = await ort.InferenceSession.create(MODEL_PATH);
+            
             this.modelLoaded = true;
-            statusCallback("Model Loaded Successfully. Engine Ready.");
+            console.log("✅ ONNX Model Loaded Successfully!");
+            
+            if (statusCallback) statusCallback("Engine Ready.");
             return true;
         } catch (error) {
-            console.error("Failed to load ONNX Model:", error);
-            statusCallback("ERROR: Model failed to load. Using basic evaluation.");
+            console.error("❌ Failed to load ONNX Model:", error);
+            
+            // এরর ডিটেইলস দেখানো
+            let errorMsg = "Engine Error.";
+            if (error.message.includes("404")) {
+                errorMsg = "Error: 'chess_model.onnx' not found in assets folder.";
+            } else if (error.message.includes("failed to fetch")) {
+                errorMsg = "Error: Network issue or wrong path.";
+            }
+            
+            if (statusCallback) statusCallback(errorMsg);
             return false;
         }
     }
     
-    /**
-     * FEN to 12x8x8 Tensor conversion (ML Input)
-     */
+    // FEN থেকে টেনসর কনভার্শন
     fenToTensor(fen) {
         const position = fen.split(' ')[0];
-        const board = new Float32Array(12 * 8 * 8); // 12 channels * 64 squares
-        
-        const pieceToChannel = {
-            'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5,
-            'p': 6, 'n': 7, 'b': 8, 'r': 9, 'q': 10, 'k': 11
-        };
+        const board = new Float32Array(12 * 8 * 8);
+        const pieceToChannel = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p':6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11};
         
         const ranks = position.split('/');
-        let squareIndex = 0;
         
         for (let rank = 0; rank < 8; rank++) {
             let file = 0;
@@ -52,129 +61,73 @@ class ModelService {
                 } else {
                     const channel = pieceToChannel[char];
                     if (channel !== undefined) {
-                        // Index: channel * 64 + rank * 8 + file (H x W first)
-                        const index = channel * 64 + rank * 8 + file;
-                        board[index] = 1.0;
+                        board[channel * 64 + rank * 8 + file] = 1.0;
                     }
                     file++;
                 }
             }
         }
-        
-        // (1, 12, 8, 8) tensor
         return new ort.Tensor('float32', board, [1, 12, 8, 8]);
     }
 
-    /**
-     * মডেল ব্যবহার করে একটি পজিশনের মান (Evaluation) অনুমান করা
-     * @returns {number} Evaluation score (-1 to 1)
-     */
+    // পজিশন ইভালুয়েশন
     async evaluate(fen) {
-        if (!this.modelLoaded) {
-            return this.evaluateMaterial(new Chess(fen)); // Fallback
-        }
-        
+        if (!this.modelLoaded) return 0;
         try {
             const inputTensor = this.fenToTensor(fen);
-            const feeds = { board_state: inputTensor };
-            const results = await this.session.run(feeds);
-            const evaluation = results.evaluation.data[0];
+            const results = await this.session.run({ board_state: inputTensor });
             
-            // Turn based adjustment: যদি কালোর চাল হয়, আমরা Evaluation উল্টে দেব
+            // মডেলের আউটপুট (সাধারণত সাদার পারস্পেক্টিভে থাকে)
+            const score = results.evaluation.data[0];
+            
+            // যার চাল তার পারস্পেক্টিভে স্কোর রিটার্ন করা
             const turn = fen.split(' ')[1];
-            return turn === 'b' ? -evaluation : evaluation;
-
-        } catch (error) {
-            console.error("Evaluation error:", error);
+            return turn === 'b' ? -score : score;
+        } catch (e) { 
+            console.error("Inference Error:", e);
             return 0; 
         }
     }
     
-    /**
-     * Minimax Search দিয়ে Best Move বের করা
-     * @param {Chess} game - chess.js instance
-     * @returns {Promise<object>} { move: MoveObject, score: number }
-     */
+    // সেরা চাল বের করা (Minimax)
     async getBestMove(game) {
-        const result = await this.minimaxRoot(game, AI_DEPTH, true);
-        return result;
-    }
-
-    /**
-     * Minimax Entry Point
-     */
-    async minimaxRoot(game, depth, isMaximizingPlayer) {
+        if (!this.modelLoaded) {
+            // ফলব্যাক: র‍্যান্ডম মুভ
+            console.warn("Model not loaded, playing random move.");
+            const moves = game.moves();
+            return { move: moves[Math.floor(Math.random() * moves.length)], score: 0 };
+        }
+        
+        // সব ভ্যালিড মুভ
         const moves = game.moves({ verbose: true });
+        
+        // গেম শেষ হলে
+        if (moves.length === 0) return { move: null, score: 0 };
+
         let bestMove = null;
         let bestScore = -Infinity;
-
+        
+        // সিম্পল ১-লেভেল সার্চ (ব্রাউজার হ্যাং না করার জন্য)
+        // Claude AI কে বলবেন এখানে "Web Worker" বা "Alpha-Beta Pruning" যোগ করতে
         for (const move of moves) {
             game.move(move);
-            const score = await this.minimax(game, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+            
+            // আমি চাল দেওয়ার পর অপোনেন্ট (Human) খেলবে, তাই আমি অপোনেন্টের স্কোর মিনিমাইজ করতে চাই
+            // অথবা Negamax লজিকে: -evaluate()
+            const evalScore = await this.evaluate(game.fen());
+            const myScore = -evalScore; 
+            
             game.undo();
-
-            if (score > bestScore) {
-                bestScore = score;
+            
+            if (myScore > bestScore) {
+                bestScore = myScore;
                 bestMove = move;
             }
         }
-        return { move: bestMove, score: bestScore };
-    }
-    
-    /**
-     * Minimax with Alpha-Beta Pruning (Recursive)
-     */
-    async minimax(game, depth, alpha, beta, isMaximizingPlayer) {
-        if (depth === 0 || game.game_over()) {
-            // Base Case: Evaluate the position using the ML model
-            const evaluation = await this.evaluate(game.fen());
-            return evaluation; 
-        }
-
-        const moves = game.moves({ verbose: true });
         
-        if (isMaximizingPlayer) {
-            let maxEval = -Infinity;
-            for (const move of moves) {
-                game.move(move);
-                const evaluation = await this.minimax(game, depth - 1, alpha, beta, false);
-                game.undo();
-                maxEval = Math.max(maxEval, evaluation);
-                alpha = Math.max(alpha, evaluation);
-                if (beta <= alpha) break;
-            }
-            return maxEval;
-        } else { // Minimizing Player (Black)
-            let minEval = Infinity;
-            for (const move of moves) {
-                game.move(move);
-                const evaluation = await this.minimax(game, depth - 1, alpha, beta, true);
-                game.undo();
-                minEval = Math.min(minEval, evaluation);
-                beta = Math.min(beta, evaluation);
-                if (beta <= alpha) break;
-            }
-            return minEval;
-        }
-    }
-    
-    /**
-     * Fallback Material Evaluation (in case model fails to load)
-     */
-    evaluateMaterial(game) {
-        const pieceValues = {'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 0};
-        let score = 0;
-        game.board().forEach(row => {
-            row.forEach(square => {
-                if (square) {
-                    const value = pieceValues[square.type];
-                    score += square.color === 'w' ? value : -value;
-                }
-            });
-        });
-        // Normalize to [-1, 1] range (roughly)
-        return score / 5000; 
+        return { move: bestMove, score: bestScore };
     }
 }
 
+// গ্লোবাল ইনস্ট্যান্স
 window.modelService = new ModelService();
