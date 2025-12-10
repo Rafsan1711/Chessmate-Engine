@@ -3,44 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChessMate AI - Opening Explorer</title>
-    
-    <!-- External Libraries CSS -->
-    <link rel="stylesheet" 
-      href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css"
-      crossorigin="anonymous">
-
-    <!-- Custom CSS -->
+    <title>ChessMate AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>">
 </head>
 <body>
-
-    <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="nav-container">
             <h1 class="nav-brand"><a href="#home">♔ ChessMate AI</a></h1>
             <div class="nav-links">
-                <a href="#home" data-route="home" class="active">Home</a>
+                <a href="#home" data-route="home">Home</a>
                 <a href="#explorer" data-route="explorer">Explorer</a>
-                <a href="#play" data-route="play">Play vs Engine</a>
-                <a href="https://github.com/Rafsan1711/Chessmate-Engine" target="_blank">GitHub</a>
+                <a href="#play" data-route="play">Play vs Bot</a>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content Area -->
-    <main id="app-container">
-        <div class="loading-overlay">Loading...</div>
-    </main>
+    <main id="app-container"></main>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 ChessMate AI. Open Source Project.</p>
-        </div>
-    </footer>
-
-    <!-- Sounds -->
+    <!-- Sounds (আপনার দেওয়া অডিও ট্যাগ) -->
     <audio id="moveSound" src="assets/audio/move.mp3"></audio>
     <audio id="captureSound" src="assets/audio/capture.mp3"></audio>
     <audio id="promoteSound" src="assets/audio/promote.mp3"></audio>
@@ -49,17 +30,13 @@
     <audio id="checkSound" src="assets/audio/check.mp3"></audio>
     <audio id="checkmateSound" src="assets/audio/checkmate.mp3"></audio>
 
-    <!-- Core Libraries -->
+    <!-- Libs -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
-    
-    <!-- Local Libraries -->
-    <script src="assets/js/lib/chess.js"></script> 
-    
-    <!-- ML Library: ONNX Runtime Web (Must be 1.17.0 or compatible) -->
+    <script src="assets/js/lib/chess.min.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
 
-    <!-- Modular JavaScript Files -->
+    <!-- App Logic -->
     <script src="assets/js/services/ApiService.js"></script>
     <script src="assets/js/services/ModelService.js"></script> 
     <script src="assets/js/services/RouterService.js"></script>
