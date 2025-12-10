@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChessMate AI - Opening Explorer</title>
     
-    <!-- External Libraries CSS (CDN) -->
+    <!-- External Libraries CSS -->
     <link rel="stylesheet" 
       href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css"
       crossorigin="anonymous">
@@ -29,20 +29,18 @@
         </div>
     </nav>
 
-    <!-- Main Content Area (SPA Router will load content here) -->
+    <!-- Main Content Area -->
     <main id="app-container">
-        <!-- Content will be injected by JavaScript router -->
         <div class="loading-overlay">Loading...</div>
     </main>
 
     <footer>
         <div class="container">
-            <p>&copy; 2025 ChessMate AI. Open Source Project.</p>
+            <p>&copy; 2024 ChessMate AI. Open Source Project.</p>
         </div>
     </footer>
 
-    <!-- Sounds (As per your template) -->
-    <!-- The move logic in BoardComponent.js will look for these IDs -->
+    <!-- Sounds -->
     <audio id="moveSound" src="assets/audio/move.mp3"></audio>
     <audio id="captureSound" src="assets/audio/capture.mp3"></audio>
     <audio id="promoteSound" src="assets/audio/promote.mp3"></audio>
@@ -51,13 +49,14 @@
     <audio id="checkSound" src="assets/audio/check.mp3"></audio>
     <audio id="checkmateSound" src="assets/audio/checkmate.mp3"></audio>
 
-    <!-- Core Libraries (Loaded from CDN) -->
+    <!-- Core Libraries -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
     
     <!-- Local Libraries -->
-    <!-- Note: chess.min.js must be in frontend/assets/js/lib/ -->
-    <script src="assets/js/lib/chess.js"></script> 
+    <script src="assets/js/lib/chess.min.js"></script> 
+    
+    <!-- ML Library: ONNX Runtime Web (Must be 1.17.0 or compatible) -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
 
     <!-- Modular JavaScript Files -->
