@@ -3,9 +3,15 @@ class BoardComponent {
         this.boardId = boardId;
         this.onMoveCallback = onMoveCallback;
         this.onStatusUpdate = onStatusUpdate;
-        // Game instance গ্লোবালি অ্যাক্সেস করার জন্য
-        this.game = new Chess(); 
+        this.game = new Chess();
         this.board = null;
+        
+        // --- সাউন্ড সেটআপ ---
+        this.sounds = {
+            move: new Audio('assets/audio/move.mp3'),
+            capture: new Audio('assets/audio/capture.mp3'),
+            check: new Audio('assets/audio/check.mp3')
+        };
         this.init();
     }
 
@@ -16,8 +22,8 @@ class BoardComponent {
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this),
-            // CDN থেকে পিস লোড করার জন্য Wikipedia Theme ব্যবহার
-            pieceTheme: 'https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/img/chesspieces/wikipedia/{piece}.png'
+            // --- লোকাল পিস ইমেজ পাথ ---
+            pieceTheme: 'assets/img/pieces/{piece}.svg' 
         };
 
         this.board = Chessboard(this.boardId, config);
@@ -33,34 +39,39 @@ class BoardComponent {
     }
 
     onDrop (source, target) {
-      // চালটি বৈধ কিনা চেক করা
+      // মুভের আগে পজিশন সেভ
+      const preMoveFen = this.game.fen();
+      
       var move = this.game.move({
         from: source,
         to: target,
-        promotion: 'q' // Simplification
+        promotion: 'q'
       });
 
-      // **CRITICAL FIX:** অবৈধ চাল হলে 'snapback' রিটার্ন করলে Move Logic বন্ধ হবে
       if (move === null) {
           return 'snapback'; 
       }
       
+      this.playSound(move); // সাউন্ড বাজানো
       this.updateStatus();
+      this.highlightLastMove(move.from, move.to); // লাস্ট মুভ হাইলাইট
+      
       if (this.onMoveCallback) {
           this.onMoveCallback(move); 
       }
-      // **CRITICAL FIX:** বৈধ চাল হলে কোনো কিছু রিটার্ন না করলে move হয়ে যায়
     }
 
     onSnapEnd () {
       this.board.position(this.game.fen());
     }
-    
+
     makeMove(moveSAN) {
         var move = this.game.move(moveSAN);
         if (move) {
             this.board.position(this.game.fen());
+            this.playSound(move);
             this.updateStatus();
+            this.highlightLastMove(move.from, move.to);
             if (this.onMoveCallback) {
                 this.onMoveCallback(move);
             }
@@ -72,17 +83,46 @@ class BoardComponent {
     undoMove() {
         this.game.undo();
         this.board.position(this.game.fen());
+        this.clearHighlights();
         this.updateStatus();
     }
 
     reset() {
         this.game.reset();
         this.board.start();
+        this.clearHighlights();
         this.updateStatus();
     }
     
     flip() {
         this.board.flip();
+    }
+    
+    // --- হেল্পার ফাংশন ---
+    
+    playSound(move) {
+        if (this.game.in_check()) {
+            this.sounds.check.play();
+        } else if (move.captured) {
+            this.sounds.capture.play();
+        } else {
+            this.sounds.move.play();
+        }
+    }
+    
+    highlightLastMove(source, target) {
+        this.clearHighlights();
+        $(`#${this.boardId} .square-${source}`).addClass('highlight-square');
+        $(`#${this.boardId} .square-${target}`).addClass('highlight-square');
+        if (this.game.in_check()) {
+             // চেক স্কোয়ার হাইলাইট করার লজিক (ঐচ্ছিক)
+             const kingSquare = this.game.kingSquare();
+             $(`#${this.boardId} .square-${kingSquare}`).addClass('in-check');
+        }
+    }
+    
+    clearHighlights() {
+        $(`#${this.boardId} .square-55d63`).removeClass('highlight-square in-check');
     }
 
     updateStatus () {
@@ -100,7 +140,6 @@ class BoardComponent {
             }
         }
         
-        // **CRITICAL FIX:** game.pgn() স্ট্রিং রিটার্ন করে, তাই সরাসরি পাঠানো হলো
         this.onStatusUpdate(status, this.game.pgn());
     }
 
