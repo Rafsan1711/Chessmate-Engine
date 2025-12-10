@@ -7,7 +7,6 @@ let explorerStatsTable = null;
  * Explorer Page Initialization
  */
 window.initializeExplorer = function() {
-    // StatustUpdate Callback function
     const onStatusUpdate = (statusText, pgn) => {
         $('#status').text(statusText);
         $('#moveHistory').text(pgn || 'Start position');
@@ -28,8 +27,9 @@ window.initializeExplorer = function() {
     });
     
     $('#undoBtn').on('click', () => {
-        explorerBoard.undoMove();
-        fetchStatsForCurrentPosition();
+        if (explorerBoard.undoMove()) {
+            fetchStatsForCurrentPosition();
+        }
     });
     
     $('#flipBtn').on('click', () => {
@@ -45,13 +45,13 @@ window.initializeExplorer = function() {
 async function fetchStatsForCurrentPosition() {
     if (routerService.currentRoute !== 'explorer') return; 
 
+    // FEN Fix: BoardComponent now returns only the 4-part FEN
     const fen = explorerBoard.getFEN();
     explorerStatsTable.setLoading();
     
-    // FEN Fix: Clean FEN is handled by ApiService internally
     const stats = await window.apiService.getOpeningStats(fen);
     
-    explorerStatsTable.render(stats);
+    explorerStatsTable.render(stats, explorerBoard.getGame().turn());
 }
 
 // --- ML Engine Page Init (Final Logic) ---
@@ -63,9 +63,7 @@ window.initializeEngine = async function() {
         $('#engineHistory').text(pgn || 'Start new game');
     };
     
-    // 1. Engine Board (onMoveCallback handles AI response)
     const engineBoard = new BoardComponent('myBoard', async (move) => {
-        // Player moved, now the engine should move.
         const gameInstance = engineBoard.getGame();
         
         if (gameInstance.game_over()) {
@@ -75,7 +73,7 @@ window.initializeEngine = async function() {
         
         engineStatusElement.text("AI Thinking... (Depth 3)");
         
-        // AI Move generation call
+        // Call ML Model
         const { move: aiMove, score } = await window.modelService.getBestMove(gameInstance);
         
         if (aiMove) {
@@ -88,7 +86,7 @@ window.initializeEngine = async function() {
                 }
             }, 500);
         } else {
-             engineStatusElement.text("Game Over or AI Error.");
+             engineStatusElement.text("Game Over or AI Error. Click New Game.");
         }
         
     }, onStatusUpdate);
@@ -96,10 +94,13 @@ window.initializeEngine = async function() {
     // Load Model on Page Init
     const modelLoaded = await window.modelService.loadModel((msg) => engineStatusElement.text(msg));
     
-    // 2. New Game Button
+    // New Game Button
     $('#newGameBtn').on('click', () => {
         engineBoard.reset();
         engineStatusElement.text(modelLoaded ? "Engine Ready. White to Move." : "Engine Error. Basic play available.");
+        
+        // Start AI if it's black's turn (optional)
+        // if (engineBoard.getGame().turn() === 'b') { ... }
     });
     
     $('#flipBtn').on('click', () => {
