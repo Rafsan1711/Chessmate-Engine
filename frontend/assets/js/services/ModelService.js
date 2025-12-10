@@ -1,7 +1,13 @@
 // WASM পাথ সেটআপ
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
 
-// মডেল পাথ (Render এ assets ফোল্ডার রুটে থাকে)
+// --- CRITICAL FIX: Threading Disable ---
+// এই দুটি লাইন আপনার "env.wasm.numThreads" এরর ফিক্স করবে
+ort.env.wasm.numThreads = 1; 
+ort.env.wasm.proxy = false;
+// -------------------------------------
+
+// মডেল পাথ
 const MODEL_PATH = "assets/chess_model.onnx"; 
 
 class ModelService {
@@ -12,21 +18,35 @@ class ModelService {
 
     async loadModel(statusCallback) {
         if (this.modelLoaded) return true;
-        if (statusCallback) statusCallback("Loading Engine...");
+
+        if (statusCallback) statusCallback("Loading Engine resources...");
         
         try {
+            // মডেল লোড করা
             this.session = await ort.InferenceSession.create(MODEL_PATH);
+            
             this.modelLoaded = true;
-            if (statusCallback) statusCallback("Engine Ready.");
+            console.log("✅ ONNX Model Loaded!");
+            
+            if (statusCallback) statusCallback("Engine Ready. You are White.");
             return true;
         } catch (error) {
-            console.error("Model Error:", error);
-            if (statusCallback) statusCallback("Engine failed. Check console.");
+            console.error("❌ Failed to load Model:", error);
+            
+            let msg = "Engine Error.";
+            // নির্দিষ্ট এরর মেসেজ
+            if (error.message && error.message.includes("404")) {
+                msg = "Error: 'assets/chess_model.onnx' not found.";
+            } else if (error.name === "NotSupportedError") {
+                msg = "Browser not supported (WebAssembly missing).";
+            }
+            
+            if (statusCallback) statusCallback(msg);
             return false;
         }
     }
     
-    // ইনপুট টেনসর
+    // FEN to Tensor
     fenToTensor(fen) {
         const position = fen.split(' ')[0];
         const board = new Float32Array(12 * 8 * 8);
@@ -48,6 +68,16 @@ class ModelService {
         return new ort.Tensor('float32', board, [1, 12, 8, 8]);
     }
 
+    async evaluate(fen) {
+        if (!this.modelLoaded) return 0;
+        try {
+            const inputTensor = this.fenToTensor(fen);
+            const results = await this.session.run({ board_state: inputTensor });
+            const score = results.evaluation.data[0];
+            return fen.split(' ')[1] === 'b' ? -score : score;
+        } catch (e) { return 0; }
+    }
+    
     async getBestMove(game) {
         if (!this.modelLoaded) {
             // মডেল না থাকলে র‍্যান্ডম মুভ
@@ -60,20 +90,11 @@ class ModelService {
         let bestMove = null;
         let bestScore = -Infinity;
         
+        // সব মুভ লুপ করা
         for (const move of moves) {
             game.move(move);
-            // বর্তমান বোর্ডের স্কোর (AI এর চালের পর)
-            // আমরা চাই অপোনেন্টের স্কোর মিনিমাম হোক -> Negamax Logic
-            const inputTensor = this.fenToTensor(game.fen());
-            const results = await this.session.run({ board_state: inputTensor });
-            let score = results.evaluation.data[0];
-            
-            // যদি কালোর চাল হয়, স্কোর উল্টে দাও (কারণ মডেল সাদার সাপেক্ষে ট্রেন করা)
-            if (game.turn() === 'b') score = -score;
-            
-            // Negate score for minimax
-            score = -score;
-
+            // Negamax: -evaluate()
+            const score = - (await this.evaluate(game.fen()));
             game.undo();
             
             if (score > bestScore) {
@@ -81,6 +102,10 @@ class ModelService {
                 bestMove = move;
             }
         }
+        
+        // যদি কোনো কারণে মুভ না পাওয়া যায় (যেমন চেকমেট), তবুও সেফটি চেক
+        if (!bestMove && moves.length > 0) bestMove = moves[0];
+
         return { move: bestMove, score: bestScore };
     }
 }
