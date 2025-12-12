@@ -11,20 +11,21 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Hugging Face থেকে .db ফাইলের লিংক
-const DB_URL = "https://huggingface.co/datasets/Rafs-an09002/chessmate-opening-stats/resolve/main/chess_stats.db";
+// --- UPDATE: V2 Database Configuration ---
+// নতুন রিপোজিটরি এবং ফাইলের নাম
+const DB_URL = "https://huggingface.co/datasets/Rafs-an09002/chessmate-data-v2/resolve/main/chess_stats_v2.db";
 // ফাইলটি যেখানে সেভ হবে
-const DB_PATH = path.join(__dirname, 'chess_stats.db');
+const DB_PATH = path.join(__dirname, 'chess_stats_v2.db');
 
 let db = null;
 
-// ১. ডেটাবেস ডাউনলোড এবং কানেক্ট করার ফাংশন
+// ডেটাবেস ডাউনলোড এবং কানেক্ট করার ফাংশন
 async function initDatabase() {
     try {
-        // যদি ফাইল না থাকে, তাহলে ডাউনলোড করো
+        // ফাইল আগে থেকেই আছে কিনা চেক করা
         if (!fs.existsSync(DB_PATH)) {
-            console.log("⏳ Database file missing. Downloading from Hugging Face...");
-            console.log("This may take 10-20 seconds...");
+            console.log("⏳ V2 Database missing. Downloading High-Quality DB (800MB+)...");
+            console.log("⚠️ This might take 1-2 minutes on the first run.");
 
             const writer = fs.createWriteStream(DB_PATH);
             
@@ -40,29 +41,27 @@ async function initDatabase() {
                 writer.on('finish', resolve);
                 writer.on('error', reject);
             });
-            console.log("✅ Download finished!");
+            console.log("✅ V2 Database Downloaded Successfully!");
         } else {
-            console.log("✅ Database file found locally.");
+            console.log("✅ V2 Database found locally.");
         }
 
-        // ২. SQLite কানেক্ট করা
-        // 'readonly: true' দিচ্ছি যাতে পারফর্মেন্স ভালো হয় এবং ভুলে ডেটা এডিট না হয়
+        // SQLite কানেক্ট করা (Read Only Mode for Speed)
         db = new Database(DB_PATH, { readonly: true });
-        console.log("🚀 SQLite Database Connected Successfully!");
+        console.log("🚀 SQLite V2 Connected! Ready to serve Pro Stats.");
 
     } catch (error) {
-        console.error("❌ Database Init Error:", error);
+        console.error("❌ Database Init Error:", error.message);
     }
 }
 
 // হেলথ চেক রুট
 app.get('/', (req, res) => {
-    res.send("Chessmate API (SQLite Version) is Running! ♟️");
+    res.send("ChessMate AI (Pro V2) is Running! ♟️");
 });
 
-// মেইন স্ট্যাটস রুট
+// স্ট্যাটস রুট
 app.get('/api/stats', (req, res) => {
-    // যদি ডেটাবেস রেডি না থাকে
     if (!db) {
         return res.status(503).json({ error: "Database is initializing, please wait..." });
     }
@@ -71,16 +70,13 @@ app.get('/api/stats', (req, res) => {
     if (!fen) return res.status(400).json({ error: "Missing FEN" });
 
     // FEN ক্লিন করা (প্রথম ৪ অংশ)
-    // rnbqkbnr/pp... 0 1  ---> rnbqkbnr/pp...
     const cleanFen = fen.split(" ").slice(0, 4).join(" ");
 
     try {
-        // ৩. ডেটাবেস থেকে কুয়েরি করা
-        // আমরা সরাসরি 'positions' টেবিল থেকে 'stats' কলাম খুঁজছি
+        // ডেটাবেস কুয়েরি
         const row = db.prepare('SELECT stats FROM positions WHERE fen = ?').get(cleanFen);
 
         if (row) {
-            // ডেটা পাওয়া গেলে JSON এ কনভার্ট করে পাঠানো
             res.json({
                 fen: cleanFen,
                 found: true,
@@ -90,7 +86,7 @@ app.get('/api/stats', (req, res) => {
             res.json({
                 fen: cleanFen,
                 found: false,
-                message: "Position not found in database"
+                message: "Position not found in V2 database"
             });
         }
     } catch (err) {
@@ -102,6 +98,5 @@ app.get('/api/stats', (req, res) => {
 // সার্ভার স্টার্ট
 app.listen(PORT, async () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    // সার্ভার চালুর সাথে সাথে ডেটাবেস সেটআপ শুরু হবে
     await initDatabase();
 });
