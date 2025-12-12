@@ -87,7 +87,7 @@ class ModelService {
         this.session = null;
         this.modelLoaded = false;
         // সার্চ ডেপথ (৩ বা ৪ হলে ব্রাউজারে ভালো চলে)
-        this.searchDepth = 5; 
+        this.searchDepth = 3; 
         this.nodesEvaluated = 0;
     }
 
