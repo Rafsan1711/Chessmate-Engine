@@ -1,12 +1,10 @@
 // --- কনফিগারেশন ---
-// WASM ফাইলগুলো CDN থেকে লোড হবে
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
-
-// থ্রেডিং ফিক্স (অবশ্যই ১ হতে হবে)
 ort.env.wasm.numThreads = 1; 
 ort.env.wasm.proxy = false;
 
-const MODEL_PATH = "assets/chess_model.onnx"; 
+// UPDATE: নতুন মডেল ফাইলের নাম
+const MODEL_PATH = "assets/chess_model_v2.onnx"; 
 
 class ModelService {
     constructor() {
@@ -17,44 +15,32 @@ class ModelService {
     async loadModel(statusCallback) {
         if (this.modelLoaded) return true;
 
-        if (statusCallback) statusCallback("Loading Engine resources...");
+        if (statusCallback) statusCallback("Loading V2 Pro Engine (ResNet)...");
         
         try {
-            // মডেল ফাইলের অস্তিত্ব চেক করা (Optional Fetch Check)
             const response = await fetch(MODEL_PATH, { method: 'HEAD' });
             if (!response.ok) {
                 throw new Error(`Model file not found (Status: ${response.status})`);
             }
 
-            // মডেল সেশন তৈরি
             this.session = await ort.InferenceSession.create(MODEL_PATH);
             
             this.modelLoaded = true;
-            console.log("✅ ONNX Model Loaded Successfully!");
+            console.log("✅ V2 ResNet Model Loaded Successfully!");
             
-            if (statusCallback) statusCallback("Engine Ready. You are White.");
+            if (statusCallback) statusCallback("Engine Ready (Pro V2). You are White.");
             return true;
 
         } catch (error) {
             console.error("❌ Failed to load Model:", error);
             
-            // সেইফ এরর মেসেজ হ্যান্ডলিং (ক্র্যাশ ফিক্স)
-            let errorText = "Unknown Error";
-            if (typeof error === "string") {
-                errorText = error;
-            } else if (error && error.message) {
-                errorText = error.message;
-            } else {
-                errorText = JSON.stringify(error);
-            }
-
             let userMsg = "Engine failed to load.";
-            if (errorText.includes("404") || errorText.includes("not found")) {
-                userMsg = "Error: 'chess_model.onnx' not found in assets.";
-            } else if (errorText.includes("network") || errorText.includes("fetch")) {
-                userMsg = "Network Error: Check connection.";
-            } else if (errorText.includes("magic number")) {
-                userMsg = "Error: Invalid ONNX file (Corrupted/LFS pointer).";
+            if (error.message && error.message.includes("404")) {
+                userMsg = "Error: 'chess_model_v2.onnx' missing in assets folder.";
+            } else if (error.message && error.message.includes("fetch")) {
+                userMsg = "Network Error: Please check your connection.";
+            } else if (error.message && error.message.includes("magic number")) {
+                userMsg = "Error: Model file corrupted (LFS Issue).";
             }
             
             if (statusCallback) statusCallback(userMsg);
@@ -62,6 +48,7 @@ class ModelService {
         }
     }
     
+    // ResNet Input (Same Logic: 12x8x8)
     fenToTensor(fen) {
         const position = fen.split(' ')[0];
         const board = new Float32Array(12 * 8 * 8);
@@ -88,6 +75,8 @@ class ModelService {
         try {
             const inputTensor = this.fenToTensor(fen);
             const results = await this.session.run({ board_state: inputTensor });
+            
+            // ResNet এর আউটপুট
             const score = results.evaluation.data[0];
             return fen.split(' ')[1] === 'b' ? -score : score;
         } catch (e) { return 0; }
@@ -97,9 +86,11 @@ class ModelService {
         if (!this.modelLoaded) {
             const moves = game.moves();
             if (moves.length === 0) return { move: null, score: 0 };
+            // মডেল না থাকলে র‍্যান্ডম মুভ
             return { move: moves[Math.floor(Math.random() * moves.length)], score: 0 };
         }
         
+        // Depth 2 সার্চ (ব্রাউজার ল্যাগ কমানোর জন্য)
         const moves = game.moves({ verbose: true });
         if (moves.length === 0) return { move: null, score: 0 };
 
