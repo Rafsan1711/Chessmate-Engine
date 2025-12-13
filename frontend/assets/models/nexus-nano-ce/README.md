@@ -50,5 +50,5 @@ The training data for Nexus-nano was curated to teach the engine the "rules of t
 
 ---
 <div align="center">
-  <p>Part of the <b>GambitFlow</b> Project by
+  <p>Part of the <b>GambitFlow</b>
 </div>
