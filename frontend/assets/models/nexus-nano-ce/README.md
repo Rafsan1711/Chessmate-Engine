@@ -1,46 +1,54 @@
+
 # ⚡ Nexus-nano CE (Chess Engine)
 
 <div align="center">
 
 ![Type](https://img.shields.io/badge/Type-Lightweight%20CNN-blue)
+![Params](https://img.shields.io/badge/Parameters-~4.3%20Million-orange)
 ![Size](https://img.shields.io/badge/Size-~16.5MB-green)
-![Target](https://img.shields.io/badge/Target-Speed%20%2F%20Mobile-orange)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey)
 
 </div>
 
 ## 📖 Model Overview
 
-**Nexus-nano CE** is the lightweight, high-velocity variant of the GambitFlow AI series. It is designed specifically for scenarios where inference speed is critical, such as running on older mobile devices or low-power environments.
+**Nexus-nano CE** is the lightweight, high-velocity variant of the GambitFlow AI series. It is designed specifically for scenarios where inference speed is critical, such as running on older mobile devices or low-power environments without GPU acceleration.
 
-Unlike its larger sibling (Nexus-core), Nano focuses on **tactical sharpness** rather than deep positional understanding. It is excellent for Blitz or Bullet style calculations where a "good enough" move is needed instantly.
+Unlike its larger sibling (Nexus-core), Nano focuses on **material advantage** and **immediate tactics** rather than deep positional understanding.
 
-## 🧠 Architecture & Specs
+## 🧠 Technical Architecture
 
-| Feature | Specification |
+- **Architecture Type:** Standard CNN (Convolutional Neural Network)
+- **Depth:** 3 Convolutional Layers + 3 Fully Connected Layers.
+- **Parameter Count:** **~4.3 Million** (Mostly in the fully connected output layer).
+- **Input Shape:** `(1, 12, 8, 8)` Tensor (One-Hot Encoded Board).
+- **Activation Function:** ReLU (Rectified Linear Unit).
+- **Output:** Scalar Evaluation Score (`-1.0` to `+1.0`).
+
+## 📊 Training Data & Methodology
+
+The training data for Nexus-nano was curated to teach the engine the "rules of thumb" of chess.
+
+- **Source:** Lichess Standard Rated Games (February 2016).
+- **Dataset Size:** ~100,000 Games (Approx. 200k unique positions).
+- **Player Rating:** Mixed (1200 - 2000+ ELO).
+- **Learning Objective:** The model learned to penalize blunders (hanging pieces) and reward material gain. It does not understand complex long-term sacrifices.
+
+## 🚀 Performance Profile
+
+| Metric | Rating |
 | :--- | :--- |
-| **Architecture** | Standard CNN (3 Convolutional Layers) |
-| **Input Shape** | `(1, 12, 8, 8)` Tensor (One-Hot Encoded Board) |
-| **Activation** | ReLU (Rectified Linear Unit) |
-| **Output** | Scalar Evaluation Score (`-1.0` to `+1.0`) |
-| **Inference Time** | < 5ms (on average CPU) |
+| **Speed** | ⭐⭐⭐⭐⭐ (Instant) |
+| **Tactics** | ⭐⭐⭐ (Good at spotting hanging pieces) |
+| **Positioning** | ⭐ (Weak, prefers material over position) |
+| **Endgame** | ⭐⭐ (Basic checkmating patterns) |
 
-## 📊 Training Data
-
-This model was trained on a curated subset of the Lichess database to learn fundamental chess rules and basic tactics.
-
-- **Source:** Lichess Standard Rated Games (2016).
-- **Dataset Size:** ~100,000 Games.
-- **Positions:** Approx. 200,000 - 300,000 unique positions.
-- **Focus:** Material balance and immediate tactical threats.
-
-## 🚀 Use Cases
-
-- **Mobile Browsers:** Runs flawlessly without draining battery.
-- **Rapid Analysis:** Quickly scanning a game for major blunders.
-- **Tutorial Mode:** Playing against beginners/intermediates (~400-800 ELO equivalent).
+## 🎯 Ideal Use Case
+- Mobile Browsers.
+- Rapid/Bullet Analysis.
+- Tutorial Mode for Beginners.
 
 ---
 <div align="center">
-  <p>Part of the <b>GambitFlow</b> 
+  <p>Part of the <b>GambitFlow</b> Project by
 </div>
