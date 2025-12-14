@@ -1,72 +1,86 @@
 let explorerBoard = null;
 let explorerStatsTable = null;
-let selectedModelKey = null; // 'nano' or 'core'
+let selectedModelKey = null;
 
 // --- Global UI Helpers ---
 function showModelModal() {
-    const modal = new bootstrap.Modal(document.getElementById('modelSelectModal'));
-    modal.show();
+    const modalElement = document.getElementById('modelSelectModal');
+    if(modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
 }
 
 window.selectModel = function(modelKey) {
     selectedModelKey = modelKey;
     
-    // Close modal
     const modalEl = document.getElementById('modelSelectModal');
     const modal = bootstrap.Modal.getInstance(modalEl);
-    modal.hide();
+    if(modal) modal.hide();
     
-    // Initialize Engine with selected model
     initializeEngine();
 };
 
 // --- Explorer Page ---
 window.initializeExplorer = function() {
+    // GSAP Safety Check: উপাদানগুলো না থাকলে এনিমেশন চালাবে না
+    if (!document.querySelector("#myBoard") || !document.querySelector("#statsBody")) return;
+
     const onStatusUpdate = (statusText, pgn) => {
-        $('#status').text(statusText);
-        $('#moveHistory').text(pgn || 'Start position');
+        const statusEl = $('#status');
+        const moveHistEl = $('#moveHistory');
+        if(statusEl.length) statusEl.text(statusText);
+        if(moveHistEl.length) moveHistEl.text(pgn || 'Start position');
     };
     
     const onMoveSelect = (moveSAN) => {
-        explorerBoard.makeMove(moveSAN);
+        if(explorerBoard) explorerBoard.makeMove(moveSAN);
     };
 
     explorerBoard = new BoardComponent('myBoard', fetchStatsForCurrentPosition, onStatusUpdate);
     explorerStatsTable = new StatsTableComponent('statsBody', onMoveSelect);
 
-    $('#resetBtn').on('click', () => { explorerBoard.reset(); fetchStatsForCurrentPosition(); });
-    $('#undoBtn').on('click', () => { if(explorerBoard.undoMove()) fetchStatsForCurrentPosition(); });
-    $('#flipBtn').on('click', () => { explorerBoard.flip(); });
+    $('#resetBtn').on('click', () => { if(explorerBoard) { explorerBoard.reset(); fetchStatsForCurrentPosition(); }});
+    $('#undoBtn').on('click', () => { if(explorerBoard && explorerBoard.undoMove()) fetchStatsForCurrentPosition(); });
+    $('#flipBtn').on('click', () => { if(explorerBoard) explorerBoard.flip(); });
     
     fetchStatsForCurrentPosition();
     
-    // Animation
-    gsap.from(".board-area", { duration: 1, x: -50, opacity: 0, ease: "power3.out" });
-    gsap.from(".stats-area", { duration: 1, x: 50, opacity: 0, ease: "power3.out", delay: 0.2 });
+    // Animation (Safe)
+    if (document.querySelector(".board-area")) {
+        gsap.from(".board-area", { duration: 1, x: -50, opacity: 0, ease: "power3.out" });
+    }
+    if (document.querySelector(".stats-area")) {
+        gsap.from(".stats-area", { duration: 1, x: 50, opacity: 0, ease: "power3.out", delay: 0.2 });
+    }
 };
 
 async function fetchStatsForCurrentPosition() {
-    if (routerService.currentRoute !== 'explorer') return; 
+    if (routerService.currentRoute !== 'explorer' || !explorerBoard) return; 
     const fen = explorerBoard.getFEN();
-    explorerStatsTable.setLoading();
+    if(explorerStatsTable) explorerStatsTable.setLoading();
     const stats = await window.apiService.getOpeningStats(fen);
-    explorerStatsTable.render(stats, explorerBoard.getGame().turn());
+    if(explorerStatsTable) explorerStatsTable.render(stats);
 }
 
 // --- Play vs AI Page ---
 window.initializeEngine = async function() {
-    // Check if model selected
+    // Model Selection Modal Trigger
     if (!selectedModelKey) {
-        showModelModal();
-        return; // Wait for selection
+        // একটু দেরি করে মডাল দেখানো যাতে DOM রেডি হয়
+        setTimeout(showModelModal, 500);
+        return;
     }
+
+    if (!document.querySelector("#myBoard")) return;
 
     const engineStatusElement = $('#engineStatus');
     const thinkingIndicator = $('.ai-thinking-border');
     
     const onStatusUpdate = (statusText, pgn) => {
-        $('#status').text(statusText);
-        $('#engineHistory').text(pgn || 'Start new game');
+        if(engineStatusElement.length) engineStatusElement.text(statusText);
+        const hist = $('#engineHistory');
+        if(hist.length) hist.text(pgn || 'Start new game');
     };
     
     const engineBoard = new BoardComponent('myBoard', async (move) => {
@@ -79,18 +93,18 @@ window.initializeEngine = async function() {
         
         // AI Thinking UI
         engineStatusElement.html('<span class="text-info"><i class="fa-solid fa-brain fa-bounce me-2"></i>AI is thinking...</span>');
-        thinkingIndicator.show(); // Show Glow
+        if(thinkingIndicator.length) thinkingIndicator.show(); 
         
+        // ছোট ডিলে দিয়ে AI কল করা
         setTimeout(async () => {
-            // Pass the selected model key to getBestMove if needed, or handle in loadModel
-            const { move: aiMove, score } = await window.modelService.getBestMove(gameInstance);
+            const result = await window.modelService.getBestMove(gameInstance);
             
-            thinkingIndicator.hide(); // Hide Glow
+            if(thinkingIndicator.length) thinkingIndicator.hide(); 
             
-            if (aiMove) {
-                engineBoard.makeMove(aiMove);
-                let scoreText = (typeof score === 'number') ? score.toFixed(2) : score;
-                engineStatusElement.html(`<span class="text-success"><i class="fa-solid fa-check me-2"></i>AI Move: <b>${aiMove.san}</b> (Eval: ${scoreText})</span>`);
+            if (result && result.move) {
+                engineBoard.makeMove(result.move);
+                let scoreText = (typeof result.score === 'number') ? result.score.toFixed(2) : result.score;
+                engineStatusElement.html(`<span class="text-success"><i class="fa-solid fa-check me-2"></i>AI Move: <b>${result.move.san}</b> (Eval: ${scoreText})</span>`);
                 
                 if (gameInstance.game_over()) engineStatusElement.html('<span class="text-danger">Game Over!</span>');
             } else {
@@ -101,17 +115,21 @@ window.initializeEngine = async function() {
     }, onStatusUpdate);
 
     // Initialize Service with Model Key
-    const modelLoaded = await window.modelService.loadModel(selectedModelKey, (msg) => engineStatusElement.text(msg));
-    
-    $('#newGameBtn').on('click', () => {
-        engineBoard.reset();
-        engineStatusElement.text("Engine Ready.");
+    const modelLoaded = await window.modelService.loadModel(selectedModelKey, (msg) => {
+        if(engineStatusElement.length) engineStatusElement.text(msg);
     });
     
-    $('#flipBtn').on('click', () => { engineBoard.flip(); });
+    $('#newGameBtn').on('click', () => {
+        if(engineBoard) engineBoard.reset();
+        if(engineStatusElement.length) engineStatusElement.text("Engine Ready.");
+    });
+    
+    $('#flipBtn').on('click', () => { if(engineBoard) engineBoard.flip(); });
     
     // Animate Board Entry
-    gsap.from(".board-container-wrapper", { duration: 0.8, scale: 0.9, opacity: 0, ease: "back.out(1.7)" });
+    if (document.querySelector(".board-container-wrapper")) {
+        gsap.from(".board-container-wrapper", { duration: 0.8, scale: 0.9, opacity: 0, ease: "back.out(1.7)" });
+    }
 };
 
 // --- Init ---
