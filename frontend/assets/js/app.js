@@ -1,7 +1,26 @@
 let explorerBoard = null;
 let explorerStatsTable = null;
+let selectedModelKey = null; // 'nano' or 'core'
 
-// --- Explorer Init ---
+// --- Global UI Helpers ---
+function showModelModal() {
+    const modal = new bootstrap.Modal(document.getElementById('modelSelectModal'));
+    modal.show();
+}
+
+window.selectModel = function(modelKey) {
+    selectedModelKey = modelKey;
+    
+    // Close modal
+    const modalEl = document.getElementById('modelSelectModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+    
+    // Initialize Engine with selected model
+    initializeEngine();
+};
+
+// --- Explorer Page ---
 window.initializeExplorer = function() {
     const onStatusUpdate = (statusText, pgn) => {
         $('#status').text(statusText);
@@ -20,6 +39,10 @@ window.initializeExplorer = function() {
     $('#flipBtn').on('click', () => { explorerBoard.flip(); });
     
     fetchStatsForCurrentPosition();
+    
+    // Animation
+    gsap.from(".board-area", { duration: 1, x: -50, opacity: 0, ease: "power3.out" });
+    gsap.from(".stats-area", { duration: 1, x: 50, opacity: 0, ease: "power3.out", delay: 0.2 });
 };
 
 async function fetchStatsForCurrentPosition() {
@@ -27,12 +50,19 @@ async function fetchStatsForCurrentPosition() {
     const fen = explorerBoard.getFEN();
     explorerStatsTable.setLoading();
     const stats = await window.apiService.getOpeningStats(fen);
-    explorerStatsTable.render(stats);
+    explorerStatsTable.render(stats, explorerBoard.getGame().turn());
 }
 
-// --- Engine Init (Updated) ---
+// --- Play vs AI Page ---
 window.initializeEngine = async function() {
+    // Check if model selected
+    if (!selectedModelKey) {
+        showModelModal();
+        return; // Wait for selection
+    }
+
     const engineStatusElement = $('#engineStatus');
+    const thinkingIndicator = $('.ai-thinking-border');
     
     const onStatusUpdate = (statusText, pgn) => {
         $('#status').text(statusText);
@@ -43,44 +73,48 @@ window.initializeEngine = async function() {
         const gameInstance = engineBoard.getGame();
         
         if (gameInstance.game_over()) {
-             engineStatusElement.text("Game Over!");
+             engineStatusElement.html('<span class="text-danger">Game Over!</span>');
              return;
         }
         
-        // 1. UI আপডেট হতে সময় দেওয়া
-        engineStatusElement.text("AI Thinking...");
+        // AI Thinking UI
+        engineStatusElement.html('<span class="text-info"><i class="fa-solid fa-brain fa-bounce me-2"></i>AI is thinking...</span>');
+        thinkingIndicator.show(); // Show Glow
         
-        // 2. ছোট ডিলে দিয়ে AI কল করা যাতে পিস স্টাক না হয়
         setTimeout(async () => {
+            // Pass the selected model key to getBestMove if needed, or handle in loadModel
             const { move: aiMove, score } = await window.modelService.getBestMove(gameInstance);
+            
+            thinkingIndicator.hide(); // Hide Glow
             
             if (aiMove) {
                 engineBoard.makeMove(aiMove);
-                // স্কোর ফরম্যাটিং
                 let scoreText = (typeof score === 'number') ? score.toFixed(2) : score;
-                engineStatusElement.text(`AI Move: ${aiMove.san} (${scoreText})`);
+                engineStatusElement.html(`<span class="text-success"><i class="fa-solid fa-check me-2"></i>AI Move: <b>${aiMove.san}</b> (Eval: ${scoreText})</span>`);
                 
-                if (gameInstance.game_over()) engineStatusElement.text("Game Over!");
+                if (gameInstance.game_over()) engineStatusElement.html('<span class="text-danger">Game Over!</span>');
             } else {
                  engineStatusElement.text("Checkmate / Draw.");
             }
-        }, 100); // 100ms delay for UI refresh
+        }, 100);
         
     }, onStatusUpdate);
 
-    // Load Model
-    const modelLoaded = await window.modelService.loadModel((msg) => engineStatusElement.text(msg));
+    // Initialize Service with Model Key
+    const modelLoaded = await window.modelService.loadModel(selectedModelKey, (msg) => engineStatusElement.text(msg));
     
     $('#newGameBtn').on('click', () => {
         engineBoard.reset();
-        engineStatusElement.text(modelLoaded ? "Engine Ready." : "Engine Error.");
+        engineStatusElement.text("Engine Ready.");
     });
     
     $('#flipBtn').on('click', () => { engineBoard.flip(); });
     
-    if (modelLoaded) engineStatusElement.text("Engine Ready. White to Move.");
+    // Animate Board Entry
+    gsap.from(".board-container-wrapper", { duration: 0.8, scale: 0.9, opacity: 0, ease: "back.out(1.7)" });
 };
 
+// --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
     const handleHashChange = () => {
         const hash = window.location.hash;
