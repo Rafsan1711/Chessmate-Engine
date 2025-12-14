@@ -1,6 +1,5 @@
-// 1. লাইব্রেরি ইম্পোর্ট (Worker এর ভেতর)
+// 1. লাইব্রেরি ইম্পোর্ট
 importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js");
-// chess.js এর পাথ (services ফোল্ডার থেকে এক ধাপ পেছনে -> js -> lib)
 importScripts("../lib/chess.js");
 
 // --- কনফিগারেশন ---
@@ -8,7 +7,7 @@ ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/di
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.proxy = false;
 
-// ডাইনামিক মডেল পাথ
+// --- CRITICAL FIX: আপনার গিটহাবের ফাইলের নাম অনুযায়ী পাথ ---
 const MODELS = {
     'nano': "../../models/nexus-nano-ce/nexus-nano-ce.onnx",
     'core': "../../models/nexus-core-ce/nexus-core-ce.onnx"
@@ -17,9 +16,10 @@ const MODELS = {
 // --- গ্লোবাল ভেরিয়েবল ---
 let session = null;
 let modelLoaded = false;
-let transpositionTable = new Map(); // মেমোরি
+let currentModelKey = null;
+let transpositionTable = new Map();
 
-// --- পজিশনাল নলেজ (PST) ---
+// --- PST টেবিল ---
 const pieceWeights = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
 const pst_w = {
     p:[[100,100,100,100,105,100,100,100],[78,83,86,73,102,82,85,90],[7,29,21,44,40,31,44,7],[-17,16,-2,15,14,0,15,-13],[-26,3,10,9,6,1,0,-23],[-22,9,5,-11,-10,-2,3,-19],[-31,8,-7,-37,-36,-14,3,-31],[0,0,0,0,0,0,0,0]],
@@ -38,7 +38,7 @@ const pst_b = {
     k: pst_w.k.slice().reverse()
 };
 
-// --- মেইন লজিক (Message Handler) ---
+// --- Message Handler ---
 self.onmessage = async function(e) {
     const { type, data, modelKey } = e.data;
 
@@ -48,11 +48,9 @@ self.onmessage = async function(e) {
     } 
     else if (type === 'THINK') {
         if (!modelLoaded) {
-            self.postMessage({ type: 'ERROR', data: 'Model not loaded yet' });
+            self.postMessage({ type: 'ERROR', data: 'Model not loaded yet. Please wait.' });
             return;
         }
-        
-        // সার্চ শুরু
         try {
             const bestMove = await getBestMove(data.fen, data.depth);
             self.postMessage({ type: 'BEST_MOVE', data: bestMove });
@@ -62,19 +60,16 @@ self.onmessage = async function(e) {
     }
 };
 
-// --- ফাংশনস ---
-
 async function loadModel(path) {
     try {
-        // নতুন মডেল লোড করার আগে মেমোরি ক্লিয়ার
-        session = null;
+        session = null; // Clear previous
         transpositionTable.clear();
-
+        
         session = await ort.InferenceSession.create(path);
         modelLoaded = true;
         self.postMessage({ type: 'MODEL_LOADED' });
     } catch (error) {
-        self.postMessage({ type: 'ERROR', data: error.message });
+        self.postMessage({ type: 'ERROR', data: "Failed to load: " + path });
     }
 }
 
@@ -102,7 +97,7 @@ async function evaluate(game) {
     const fen = game.fen();
     let totalScore = 0;
 
-    // PST স্কোর
+    // PST
     const board = game.board();
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
@@ -118,7 +113,7 @@ async function evaluate(game) {
     }
     let heuristicScore = totalScore / 1000; 
 
-    // NN স্কোর
+    // NN
     let nnScore = 0;
     try {
         const inputTensor = fenToTensor(fen);
@@ -126,7 +121,6 @@ async function evaluate(game) {
         nnScore = results.evaluation.data[0];
     } catch (e) { nnScore = 0; }
 
-    // হাইব্রিড স্কোর: NN 70%, PST 30%
     let finalScore = (nnScore * 0.7) + (heuristicScore * 0.3);
     return game.turn() === 'b' ? -finalScore : finalScore;
 }
@@ -137,7 +131,6 @@ async function getBestMove(fen, depth) {
     
     if (moves.length === 0) return { move: null, score: 0 };
 
-    // Move Ordering
     moves.sort((a, b) => {
         let scoreA = 0, scoreB = 0;
         if (a.captured) scoreA += 10;
@@ -169,7 +162,6 @@ async function getBestMove(fen, depth) {
 }
 
 async function alphaBeta(game, depth, alpha, beta) {
-    // Transposition Table Check
     const fen = game.fen();
     if (transpositionTable.has(fen)) {
         const entry = transpositionTable.get(fen);
@@ -183,7 +175,6 @@ async function alphaBeta(game, depth, alpha, beta) {
     }
 
     const moves = game.moves({ verbose: true });
-    // Move Ordering
     moves.sort((a, b) => (b.captured ? 10 : 0) - (a.captured ? 10 : 0));
 
     let value = -Infinity;
@@ -198,9 +189,7 @@ async function alphaBeta(game, depth, alpha, beta) {
         if (alpha >= beta) break;
     }
     
-    // Save to Memory
     transpositionTable.set(fen, { depth: depth, score: value });
-    
     if (transpositionTable.size > 100000) transpositionTable.clear();
 
     return value;
