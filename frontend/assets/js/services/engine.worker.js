@@ -10,8 +10,8 @@ ort.env.wasm.proxy = false;
 
 // ডাইনামিক মডেল পাথ
 const MODELS = {
-    'nano': "../../models/nexus-nano-ce/model.onnx",
-    'core': "../../models/nexus-core-ce/model.onnx"
+    'nano': "../../models/nexus-nano-ce/nexus-nano-ce.onnx",
+    'core': "../../models/nexus-core-ce/nexus-core-ce.onnx"
 };
 
 // --- গ্লোবাল ভেরিয়েবল ---
