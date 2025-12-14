@@ -114,6 +114,3 @@ Distributed under the **Creative Commons Attribution-NonCommercial 4.0 Internati
 
 ---
 
-<div align="center">
-  <p>Engineered by <a href="https://github.com/Rafsan1711">NeuraxLabs</a></p>
-</div>
