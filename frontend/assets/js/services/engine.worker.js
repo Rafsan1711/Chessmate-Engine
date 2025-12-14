@@ -4,13 +4,12 @@
 importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js");
 // chess.js এর পাথ রিলেটিভ (services ফোল্ডার থেকে এক ধাপ পেছনে -> js -> lib)
 importScripts("../lib/chess.js");
-
 // --- কনফিগারেশন ---
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.proxy = false;
 
-const MODEL_PATH = "../../../assets/chess_model_v2.onnx"; // Worker থেকে রিলেটিভ পাথ
+const MODEL_PATH = "../models/nexus-core-ce/model.onnx";
 
 // --- গ্লোবাল ভেরিয়েবল ---
 let session = null;
