@@ -1,4 +1,4 @@
-// আপনার দেওয়া সলিড পিস লোডার লজিক
+// পিস লোডার কনফিগ
 const pieceCandidates = {
     'wK':['assets/img/pieces/wK.svg','assets/img/pieces/wKing.svg'],
     'wQ':['assets/img/pieces/wQ.svg','assets/img/pieces/wQueen.svg'],
@@ -40,7 +40,7 @@ async function resolveAllPieces(){
             } catch(e){}
         }
     }
-    // ফলব্যাক
+    // Fallback logic
     let defaultAny = null;
     for (let k in pieceImgResolved) { defaultAny = pieceImgResolved[k]; break; }
     for (let k in pieceCandidates) { if (!pieceImgResolved[k]) pieceImgResolved[k] = defaultAny; }
@@ -57,23 +57,30 @@ class BoardComponent {
         this.board = null;
         this.isLocked = false; 
 
+        // সাউন্ড এলিমেন্ট
+        this.sounds = {
+            move: document.getElementById('moveSound'),
+            capture: document.getElementById('captureSound'),
+            check: document.getElementById('checkSound'),
+            checkmate: document.getElementById('checkmateSound'),
+            castling: document.getElementById('castlingSound'),
+            promote: document.getElementById('promoteSound'),
+            incorrect: document.getElementById('incorrectMoveSound')
+        };
+
         this.init();
     }
 
     async init() {
-        // পিস লোড না হওয়া পর্যন্ত অপেক্ষা
         await resolveAllPieces();
 
         const config = {
             draggable: true,
             position: 'start',
             moveSpeed: 200,
-            
-            // আপনার দেওয়া লজিক অনুযায়ী পিস থিম
             pieceTheme: function(piece) {
                 return pieceImgResolved[piece] || 'assets/img/pieces/wP.svg';
             },
-
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this)
@@ -81,6 +88,11 @@ class BoardComponent {
 
         this.board = Chessboard(this.boardId, config);
         this.updateStatus();
+
+        // Responsive Resize (FIXED)
+        window.addEventListener('resize', () => {
+            if (this.board) this.board.resize();
+        });
     }
     
     onDragStart (source, piece) {
@@ -131,9 +143,13 @@ class BoardComponent {
     }
 
     undoMove() {
-        this.game.undo();
-        this.board.position(this.game.fen());
-        this.updateStatus();
+        const move = this.game.undo();
+        if (move) {
+            this.board.position(this.game.fen());
+            this.updateStatus();
+            return true;
+        }
+        return false;
     }
 
     reset() {
@@ -141,37 +157,44 @@ class BoardComponent {
         this.board.start();
         this.updateStatus();
         this.isLocked = false;
+        this.clearHighlights();
     }
     
     flip() {
         this.board.flip();
     }
     
-    // HTML Audio Tag ব্যবহার করে সাউন্ড প্লে (আপনার কোড অনুযায়ী)
     playSound(moveOrType) {
-        let id = 'moveSound';
+        let type = 'move';
         
         if (typeof moveOrType === 'string') {
-            if(moveOrType === 'incorrect') id = 'incorrectMoveSound';
+            type = moveOrType;
         } else if (typeof moveOrType === 'object') {
-            if (this.game.in_checkmate()) id = 'checkmateSound';
-            else if (this.game.in_check()) id = 'checkSound';
-            else if (moveOrType.flags.includes('c') || moveOrType.flags.includes('e')) id = 'captureSound'; // capture/en-passant
-            else if (moveOrType.flags.includes('k') || moveOrType.flags.includes('q')) id = 'castlingSound';
-            else if (moveOrType.flags.includes('p')) id = 'promoteSound';
+            if (this.game.in_checkmate()) type = 'checkmate';
+            else if (this.game.in_check()) type = 'check';
+            else if (moveOrType.flags.includes('c') || moveOrType.flags.includes('e')) type = 'capture';
+            else if (moveOrType.flags.includes('k') || moveOrType.flags.includes('q')) type = 'castling';
+            else if (moveOrType.flags.includes('p')) type = 'promote';
         }
         
-        const el = document.getElementById(id);
-        if (el) {
-            el.currentTime = 0;
-            el.play().catch(e => console.log("Audio play blocked:", e));
+        const audio = this.sounds[type] || this.sounds['move'];
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
         }
     }
     
     highlightLastMove(source, target) {
-        $(`#${this.boardId} .square-55d63`).removeClass('highlight-square');
+        this.clearHighlights();
         $(`#${this.boardId} .square-${source}`).addClass('highlight-square');
         $(`#${this.boardId} .square-${target}`).addClass('highlight-square');
+        if (this.game.in_check()) {
+             $(`#${this.boardId} .square-55d63`).addClass('in-check');
+        }
+    }
+    
+    clearHighlights() {
+        $(`#${this.boardId} .square-55d63`).removeClass('highlight-square in-check');
     }
 
     updateStatus () {
@@ -184,6 +207,9 @@ class BoardComponent {
             status = 'Game over, drawn.';
         } else {
             status = moveColor + ' to move';
+            if (this.game.in_check()) {
+                status += ', in Check!';
+            }
         }
         
         this.onStatusUpdate(status, this.game.pgn());
