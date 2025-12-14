@@ -1,11 +1,7 @@
-// File Path: frontend/assets/js/app.js
-
 let explorerBoard = null;
 let explorerStatsTable = null;
 
-/**
- * Explorer Page Initialization
- */
+// --- Explorer Init ---
 window.initializeExplorer = function() {
     const onStatusUpdate = (statusText, pgn) => {
         $('#status').text(statusText);
@@ -16,45 +12,25 @@ window.initializeExplorer = function() {
         explorerBoard.makeMove(moveSAN);
     };
 
-    // 1. Initialize Board
     explorerBoard = new BoardComponent('myBoard', fetchStatsForCurrentPosition, onStatusUpdate);
     explorerStatsTable = new StatsTableComponent('statsBody', onMoveSelect);
 
-    // 3. Setup Event Listeners
-    $('#resetBtn').on('click', () => {
-        explorerBoard.reset();
-        fetchStatsForCurrentPosition();
-    });
-    
-    $('#undoBtn').on('click', () => {
-        if (explorerBoard.undoMove()) {
-            fetchStatsForCurrentPosition();
-        }
-    });
-    
-    $('#flipBtn').on('click', () => {
-        explorerBoard.flip();
-    });
+    $('#resetBtn').on('click', () => { explorerBoard.reset(); fetchStatsForCurrentPosition(); });
+    $('#undoBtn').on('click', () => { if(explorerBoard.undoMove()) fetchStatsForCurrentPosition(); });
+    $('#flipBtn').on('click', () => { explorerBoard.flip(); });
     
     fetchStatsForCurrentPosition();
 };
 
-/**
- * Explorer Data Fetch
- */
 async function fetchStatsForCurrentPosition() {
     if (routerService.currentRoute !== 'explorer') return; 
-
-    // FEN Fix: BoardComponent now returns only the 4-part FEN
     const fen = explorerBoard.getFEN();
     explorerStatsTable.setLoading();
-    
     const stats = await window.apiService.getOpeningStats(fen);
-    
-    explorerStatsTable.render(stats, explorerBoard.getGame().turn());
+    explorerStatsTable.render(stats);
 }
 
-// --- ML Engine Page Init (Final Logic) ---
+// --- Engine Init (Updated) ---
 window.initializeEngine = async function() {
     const engineStatusElement = $('#engineStatus');
     
@@ -71,55 +47,45 @@ window.initializeEngine = async function() {
              return;
         }
         
-        engineStatusElement.text("AI Thinking... (Depth 3)");
+        // 1. UI আপডেট হতে সময় দেওয়া
+        engineStatusElement.text("AI Thinking...");
         
-        // Call ML Model
-        const { move: aiMove, score } = await window.modelService.getBestMove(gameInstance);
-        
-        if (aiMove) {
-            setTimeout(() => {
+        // 2. ছোট ডিলে দিয়ে AI কল করা যাতে পিস স্টাক না হয়
+        setTimeout(async () => {
+            const { move: aiMove, score } = await window.modelService.getBestMove(gameInstance);
+            
+            if (aiMove) {
                 engineBoard.makeMove(aiMove);
-                engineStatusElement.text(`AI Move: ${aiMove.san} (Eval: ${score.toFixed(2)})`);
+                // স্কোর ফরম্যাটিং
+                let scoreText = (typeof score === 'number') ? score.toFixed(2) : score;
+                engineStatusElement.text(`AI Move: ${aiMove.san} (${scoreText})`);
                 
-                if (gameInstance.game_over()) {
-                    engineStatusElement.text("Game Over!");
-                }
-            }, 500);
-        } else {
-             engineStatusElement.text("Game Over or AI Error. Click New Game.");
-        }
+                if (gameInstance.game_over()) engineStatusElement.text("Game Over!");
+            } else {
+                 engineStatusElement.text("Checkmate / Draw.");
+            }
+        }, 100); // 100ms delay for UI refresh
         
     }, onStatusUpdate);
 
-    // Load Model on Page Init
+    // Load Model
     const modelLoaded = await window.modelService.loadModel((msg) => engineStatusElement.text(msg));
     
-    // New Game Button
     $('#newGameBtn').on('click', () => {
         engineBoard.reset();
-        engineStatusElement.text(modelLoaded ? "Engine Ready. White to Move." : "Engine Error. Basic play available.");
-        
-        // Start AI if it's black's turn (optional)
-        // if (engineBoard.getGame().turn() === 'b') { ... }
+        engineStatusElement.text(modelLoaded ? "Engine Ready." : "Engine Error.");
     });
     
-    $('#flipBtn').on('click', () => {
-        engineBoard.flip();
-    });
+    $('#flipBtn').on('click', () => { engineBoard.flip(); });
     
     if (modelLoaded) engineStatusElement.text("Engine Ready. White to Move.");
 };
 
-/**
- * Main Application Init
- */
 document.addEventListener('DOMContentLoaded', () => {
     const handleHashChange = () => {
         const hash = window.location.hash;
         routerService.loadRoute(hash);
     };
-
     handleHashChange();
-    
     window.addEventListener('hashchange', handleHashChange);
 });
