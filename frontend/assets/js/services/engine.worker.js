@@ -9,7 +9,7 @@ ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/di
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.proxy = false;
 
-const MODEL_PATH = "../models/nexus-core-ce/model.onnx";
+const MODEL_PATH = "../models/nexus-core-ce/nexus-core-ce.onnx";
 
 // --- গ্লোবাল ভেরিয়েবল ---
 let session = null;
