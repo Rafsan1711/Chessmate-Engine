@@ -11,31 +11,41 @@ class RouterService {
 
     loadRoute(route) {
         const routeKey = route.replace('#', '') || 'home';
+        
+        // 1. কন্টেন্ট আপডেট
         if (this.routes[routeKey]) {
             this.appContainer.innerHTML = this.routes[routeKey];
             this.currentRoute = routeKey;
             
-            // Re-trigger visual effects
-            if (window.AOS) AOS.refresh();
-            
-            if (routeKey === 'explorer' && window.initializeExplorer) setTimeout(window.initializeExplorer, 50);
-            if (routeKey === 'play' && window.initializeEngine) setTimeout(window.initializeEngine, 50);
+            // 2. ন্যাভিগেশন লিংক আপডেট
+            this.updateNavLinks(routeKey);
+
+            // 3. স্পেসিফিক পেজ ইনিশিয়ালাইজেশন
+            // একটু সময় দেওয়া যাতে DOM রেন্ডার হতে পারে
+            setTimeout(() => {
+                if (routeKey === 'explorer' && window.initializeExplorer) window.initializeExplorer();
+                if (routeKey === 'play' && window.initializeEngine) window.initializeEngine();
+                
+                // AOS রিফ্রেশ (এনিমেশনের জন্য)
+                if (window.AOS) window.AOS.refresh();
+            }, 50);
+        } else {
+            this.appContainer.innerHTML = `<div class="container page-content text-center py-5"><h2>404 Not Found</h2></div>`;
         }
-        this.updateNavLinks(routeKey);
     }
     
     updateNavLinks(key) {
-        document.querySelectorAll('.nav-links .nav-link').forEach(l => l.classList.remove('active'));
-        const activeLink = document.querySelector(`.nav-link[data-route="${key}"]`);
+        document.querySelectorAll('.navbar-nav .nav-link').forEach(l => l.classList.remove('active'));
+        const activeLink = document.querySelector(`.nav-link[href="#${key}"]`);
         if(activeLink) activeLink.classList.add('active');
     }
 
     getHomePageHTML() {
         return `
-            <div class="container hero-section text-center text-white d-flex flex-column justify-content-center" style="min-height: 80vh;">
+            <div class="container hero-section text-center text-white d-flex flex-column justify-content-center align-items-center" style="min-height: 80vh;">
                 <div data-aos="fade-up">
                     <h1 class="display-1 fw-bold mb-4">Gambit<span class="text-primary-gradient">Flow</span></h1>
-                    <p class="lead mb-5 text-muted" style="max-width: 600px; margin: 0 auto;">
+                    <p class="lead mb-5 text-muted" style="max-width: 600px;">
                         Next-Generation Chess Intelligence powered by Deep Residual Networks. 
                         Analyze with elite data or challenge the neural engine.
                     </p>
@@ -51,7 +61,7 @@ class RouterService {
         return `
             <div class="container pb-5">
                 <div class="row g-5">
-                    <div class="col-lg-6 d-flex justify-content-center" data-aos="fade-right">
+                    <div class="col-lg-6 d-flex justify-content-center board-area">
                         <div class="board-container-wrapper">
                             <div id="myBoard"></div>
                             <!-- Controls -->
@@ -63,7 +73,7 @@ class RouterService {
                             <div id="status" class="text-center mt-2 text-info"></div>
                         </div>
                     </div>
-                    <div class="col-lg-6" data-aos="fade-left">
+                    <div class="col-lg-6 stats-area">
                         <div class="glass-card p-4 h-100">
                             <h3 class="fw-bold mb-4"><i class="fa-solid fa-database me-2 text-primary"></i>Opening Explorer</h3>
                             <div class="bg-dark rounded p-2 mb-3 border border-secondary border-opacity-25">
@@ -94,7 +104,7 @@ class RouterService {
                 <div class="row g-5">
                     <div class="col-lg-6 d-flex justify-content-center position-relative">
                         <div class="board-container-wrapper">
-                            <div class="ai-thinking-border"></div> <!-- Glow Effect -->
+                            <div class="ai-thinking-border" style="display:none;"></div>
                             <div id="myBoard"></div>
                             <div class="d-flex justify-content-between mt-3">
                                 <div id="engineStatus" class="d-flex align-items-center fw-bold text-white">Select Model...</div>
