@@ -1,5 +1,3 @@
-// File: frontend/assets/js/components/StatsTableComponent.js
-
 class StatsTableComponent {
     constructor(tableBodyId, onMoveSelect) {
         this.tableBody = document.getElementById(tableBodyId);
@@ -7,25 +5,24 @@ class StatsTableComponent {
     }
 
     render(stats, currentTurn) {
-        // লোডিং বা এরর মেসেজ ক্লিয়ার করা
         this.tableBody.innerHTML = '';
 
-        // যদি কোনো স্ট্যাটস না থাকে
         if (!stats || !stats.moves || Object.keys(stats.moves).length === 0) {
             this.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align:center; padding: 20px; color: #7f8c8d;">
-                        No games found in database for this position.
+                    <td colspan="3" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-database mb-2 fs-4"></i><br>
+                        No games found in database
                     </td>
                 </tr>`;
             return;
         }
 
-        // 1. ডেটা প্রসেসিং: অবজেক্ট থেকে অ্যারেতে নেওয়া এবং সর্ট করা (জনপ্রিয়তা অনুযায়ী)
+        // Sort by Total Games
         const movesArray = Object.entries(stats.moves).map(([san, data]) => {
             const total = data.white + data.black + data.draw;
             return {
-                san: san, // e4, Nf3 etc.
+                san: san,
                 total: total,
                 whitePct: (data.white / total) * 100,
                 drawPct: (data.draw / total) * 100,
@@ -33,33 +30,30 @@ class StatsTableComponent {
             };
         }).sort((a, b) => b.total - a.total);
 
-        // 2. টেবিল রেন্ডারিং
-        // এখানে আমরা ক্যান্ডিডেট মুভ দেখাচ্ছি (Explorer Mode)
-        // আপনি যদি হিস্ট্রি চান, সেটা আলাদা প্যানেলে PGN হিসেবে আছে।
-        // এক্সপ্লোরারে আমরা দেখাই: "এই পজিশনে মানুষ কী কী চাল দিয়েছে"
-        
         movesArray.forEach((move) => {
             const row = document.createElement('tr');
             row.style.cursor = 'pointer';
             
-            // Win Rate Bar (Visual)
+            // Modern Win Bar
             const barHTML = `
-                <div style="display:flex; height:8px; width:100%; border-radius:2px; overflow:hidden; background:#444;">
-                    <div style="width:${move.whitePct}%; background:#bdc3c7;" title="White Won"></div>
-                    <div style="width:${move.drawPct}%; background:#7f8c8d;" title="Draw"></div>
-                    <div style="width:${move.blackPct}%; background:#2c3e50;" title="Black Won"></div>
+                <div class="win-bar-container w-100" style="height: 6px; background: #334155;">
+                    <div style="width:${move.whitePct}%; background-color: #cbd5e1;"></div>
+                    <div style="width:${move.drawPct}%; background-color: #64748b;"></div>
+                    <div style="width:${move.blackPct}%; background-color: #1e293b;"></div>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1" style="font-size: 0.7rem;">
+                    <span>${move.whitePct.toFixed(0)}%</span>
+                    <span>${move.drawPct.toFixed(0)}%</span>
+                    <span>${move.blackPct.toFixed(0)}%</span>
                 </div>
             `;
 
             row.innerHTML = `
-                <td style="font-weight:bold; color:#f1c40f;">${move.san}</td>
-                <td>${move.total.toLocaleString()}</td>
-                <td style="font-size:0.85em; color:#2ecc71;">${move.whitePct.toFixed(0)}%</td>
-                <td style="font-size:0.85em; color:#95a5a6;">${move.drawPct.toFixed(0)}%</td>
-                <td style="font-size:0.85em; color:#e74c3c;">${move.blackPct.toFixed(0)}%</td>
+                <td class="fw-bold text-warning">${move.san}</td>
+                <td class="text-end font-monospace">${move.total.toLocaleString()}</td>
+                <td style="min-width: 120px;">${barHTML}</td>
             `;
 
-            // ক্লিকে মুভ করা
             row.addEventListener('click', () => {
                 if(this.onMoveSelect) this.onMoveSelect(move.san);
             });
@@ -71,8 +65,9 @@ class StatsTableComponent {
     setLoading() {
         this.tableBody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align:center; padding: 20px;">
-                    Loading statistics...
+                <td colspan="3" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2 text-primary">Loading data...</span>
                 </td>
             </tr>`;
     }

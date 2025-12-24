@@ -1,23 +1,34 @@
-// File Path: frontend/assets/js/services/engine.worker.js
+// ==========================================
+// NEXUS-CORE ENGINE - CRITICAL FIXES
+// Problem: Checkmate blindness, Slow thinking, Tactical blindness
+// Solution: Advanced Search + Better Evaluation
+// ==========================================
 
-// 1. লাইব্রেরি ইম্পোর্ট (Worker এর ভেতর)
 importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js");
-// chess.js এর পাথ রিলেটিভ (services ফোল্ডার থেকে এক ধাপ পেছনে -> js -> lib)
 importScripts("../lib/chess.js");
-// --- কনফিগারেশন ---
+
+// --- Configuration ---
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/";
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.proxy = false;
 
-const MODEL_PATH = "../models/nexus-core-ce/nexus-core-ce.onnx";
+const MODELS = {
+    'nano': "../../models/nexus-nano-ce/nexus-nano-ce.onnx",
+    'core': "../../models/nexus-core-ce/nexus-core-ce.onnx"
+};
 
-// --- গ্লোবাল ভেরিয়েবল ---
+// --- Global State ---
 let session = null;
 let modelLoaded = false;
-let transpositionTable = new Map(); // মেমোরি (ক্যাশ)
+let currentModelKey = null;
+let transpositionTable = new Map();
 
-// --- PST টেবিল (পজিশনাল নলেজ) ---
-const pieceWeights = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+// --- CRITICAL FIX 1: Advanced Piece Values ---
+const pieceValues = {
+    'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000
+};
+
+// PST Tables (same as before)
 const pst_w = {
     p:[[100,100,100,100,105,100,100,100],[78,83,86,73,102,82,85,90],[7,29,21,44,40,31,44,7],[-17,16,-2,15,14,0,15,-13],[-26,3,10,9,6,1,0,-23],[-22,9,5,-11,-10,-2,3,-19],[-31,8,-7,-37,-36,-14,3,-31],[0,0,0,0,0,0,0,0]],
     n:[[-66,-53,-75,-75,-10,-55,-58,-70],[-3,-6,100,-36,4,62,-4,-14],[10,67,1,74,73,27,62,-2],[24,24,45,37,33,41,25,17],[-1,5,31,21,22,35,2,0],[-18,10,13,22,18,15,11,-14],[-23,-15,2,0,2,0,-23,-20],[-74,-23,-26,-24,-19,-35,-22,-69]],
@@ -35,37 +46,37 @@ const pst_b = {
     k: pst_w.k.slice().reverse()
 };
 
-// --- মেইন লজিক (Message Handler) ---
+// --- Message Handler ---
 self.onmessage = async function(e) {
-    const { type, data } = e.data;
+    const { type, data, modelKey } = e.data;
 
     if (type === 'LOAD_MODEL') {
-        await loadModel();
+        const path = MODELS[modelKey] || MODELS['core'];
+        await loadModel(path);
     } 
     else if (type === 'THINK') {
         if (!modelLoaded) {
-            self.postMessage({ type: 'ERROR', data: 'Model not loaded' });
+            self.postMessage({ type: 'ERROR', data: 'Model not loaded yet.' });
             return;
         }
-        
-        // সার্চ শুরু
-        const fen = data.fen;
-        const depth = data.depth || 3;
-        
-        const bestMove = await getBestMove(fen, depth);
-        self.postMessage({ type: 'BEST_MOVE', data: bestMove });
+        try {
+            const bestMove = await getBestMove(data.fen, data.depth);
+            self.postMessage({ type: 'BEST_MOVE', data: bestMove });
+        } catch (err) {
+            self.postMessage({ type: 'ERROR', data: err.message });
+        }
     }
 };
 
-// --- ফাংশনস ---
-
-async function loadModel() {
+async function loadModel(path) {
     try {
-        session = await ort.InferenceSession.create(MODEL_PATH);
+        session = null;
+        transpositionTable.clear();
+        session = await ort.InferenceSession.create(path);
         modelLoaded = true;
         self.postMessage({ type: 'MODEL_LOADED' });
     } catch (error) {
-        self.postMessage({ type: 'ERROR', data: error.message });
+        self.postMessage({ type: 'ERROR', data: "Failed to load: " + path });
     }
 }
 
@@ -89,11 +100,23 @@ function fenToTensor(fen) {
     return new ort.Tensor('float32', board, [1, 12, 8, 8]);
 }
 
+// ==========================================
+// CRITICAL FIX 2: Enhanced Evaluation
+// ==========================================
 async function evaluate(game) {
     const fen = game.fen();
+    
+    // **FIX 2.1: Checkmate & Stalemate Detection**
+    if (game.in_checkmate()) {
+        return game.turn() === 'w' ? -100000 : 100000; // Massive penalty
+    }
+    if (game.in_stalemate() || game.in_draw()) {
+        return 0; // Neutral
+    }
+    
     let totalScore = 0;
 
-    // PST স্কোর
+    // PST Evaluation
     const board = game.board();
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
@@ -101,15 +124,36 @@ async function evaluate(game) {
             if (piece) {
                 const pst = piece.color === 'w' ? pst_w : pst_b;
                 if (pst[piece.type] && pst[piece.type][i]) {
-                    const val = pieceWeights[piece.type] + pst[piece.type][i][j];
+                    const val = pieceValues[piece.type] + pst[piece.type][i][j];
                     totalScore += piece.color === 'w' ? val : -val;
                 }
             }
         }
     }
-    let heuristicScore = totalScore / 1000; 
 
-    // NN স্কোর
+    // **FIX 2.2: King Safety (Critical in Endgame)**
+    const pieces = game.board().flat().filter(p => p);
+    const totalPieces = pieces.length;
+    
+    if (totalPieces <= 10) { // Endgame
+        // Push king to center in endgame
+        const kings = pieces.filter(p => p.type === 'k');
+        for (let king of kings) {
+            const kingPos = board.flat().indexOf(king);
+            const row = Math.floor(kingPos / 8);
+            const col = kingPos % 8;
+            const centerDist = Math.abs(3.5 - row) + Math.abs(3.5 - col);
+            totalScore += king.color === 'w' ? -centerDist * 10 : centerDist * 10;
+        }
+    }
+
+    // **FIX 2.3: Mobility (More moves = better position)**
+    const mobilityScore = game.moves().length * 10;
+    totalScore += game.turn() === 'w' ? mobilityScore : -mobilityScore;
+
+    let heuristicScore = totalScore / 1000;
+
+    // Neural Network Evaluation
     let nnScore = 0;
     try {
         const inputTensor = fenToTensor(fen);
@@ -117,24 +161,118 @@ async function evaluate(game) {
         nnScore = results.evaluation.data[0];
     } catch (e) { nnScore = 0; }
 
-    let finalScore = (nnScore * 0.7) + (heuristicScore * 0.3);
+    let finalScore = (nnScore * 0.6) + (heuristicScore * 0.4);
     return game.turn() === 'b' ? -finalScore : finalScore;
 }
 
-async function getBestMove(fen, depth) {
-    const game = new Chess(fen);
-    const moves = game.moves({ verbose: true });
-    if (moves.length === 0) return { move: null, score: 0 };
-
-    // Move Ordering
-    moves.sort((a, b) => {
+// ==========================================
+// CRITICAL FIX 3: Move Ordering (Speed Boost)
+// ==========================================
+function orderMoves(moves, game) {
+    return moves.sort((a, b) => {
         let scoreA = 0, scoreB = 0;
-        if (a.captured) scoreA += 10;
-        if (a.promotion) scoreA += 5;
-        if (b.captured) scoreB += 10;
-        if (b.promotion) scoreB += 5;
+        
+        // 1. Captures (Most Valuable Victim - Least Valuable Attacker)
+        if (a.captured) {
+            scoreA += pieceValues[a.captured] * 10 - pieceValues[a.piece];
+        }
+        if (b.captured) {
+            scoreB += pieceValues[b.captured] * 10 - pieceValues[b.piece];
+        }
+        
+        // 2. Promotions
+        if (a.promotion) scoreA += 8000;
+        if (b.promotion) scoreB += 8000;
+        
+        // 3. Checks
+        game.move(a);
+        if (game.in_check()) scoreA += 5000;
+        game.undo();
+        
+        game.move(b);
+        if (game.in_check()) scoreB += 5000;
+        game.undo();
+        
         return scoreB - scoreA;
     });
+}
+
+// ==========================================
+// CRITICAL FIX 4: Quiescence Search (Tactical Vision)
+// ==========================================
+async function quiescence(game, alpha, beta, depth = 3) {
+    const standPat = await evaluate(game);
+    
+    if (depth === 0) return standPat;
+    if (standPat >= beta) return beta;
+    if (alpha < standPat) alpha = standPat;
+    
+    // Only consider captures and checks
+    const moves = game.moves({ verbose: true }).filter(m => m.captured || m.promotion);
+    
+    for (const move of moves) {
+        game.move(move);
+        const score = -await quiescence(game, -beta, -alpha, depth - 1);
+        game.undo();
+        
+        if (score >= beta) return beta;
+        if (score > alpha) alpha = score;
+    }
+    
+    return alpha;
+}
+
+// ==========================================
+// CRITICAL FIX 5: Optimized Alpha-Beta
+// ==========================================
+async function alphaBeta(game, depth, alpha, beta, useQuiescence = true) {
+    const fen = game.fen();
+    
+    if (transpositionTable.has(fen)) {
+        const entry = transpositionTable.get(fen);
+        if (entry.depth >= depth) return entry.score;
+    }
+
+    if (depth === 0) {
+        // **Use Quiescence Search instead of plain eval**
+        const score = useQuiescence ? await quiescence(game, alpha, beta) : await evaluate(game);
+        transpositionTable.set(fen, { depth: 0, score });
+        return score;
+    }
+    
+    if (game.game_over()) {
+        const score = await evaluate(game);
+        transpositionTable.set(fen, { depth: 0, score });
+        return score;
+    }
+
+    const moves = orderMoves(game.moves({ verbose: true }), game);
+    let value = -Infinity;
+
+    for (const move of moves) {
+        game.move(move);
+        const evalScore = -await alphaBeta(game, depth - 1, -beta, -alpha, useQuiescence);
+        game.undo();
+
+        value = Math.max(value, evalScore);
+        alpha = Math.max(alpha, value);
+        if (alpha >= beta) break; // Beta cutoff
+    }
+    
+    transpositionTable.set(fen, { depth, score: value });
+    if (transpositionTable.size > 50000) transpositionTable.clear();
+
+    return value;
+}
+
+// ==========================================
+// Main Search Function
+// ==========================================
+async function getBestMove(fen, depth) {
+    const game = new Chess(fen);
+    const moves = orderMoves(game.moves({ verbose: true }), game);
+    
+    if (moves.length === 0) return { move: null, score: 0 };
 
     let bestMove = moves[0];
     let bestValue = -Infinity;
@@ -143,8 +281,7 @@ async function getBestMove(fen, depth) {
 
     for (const move of moves) {
         game.move(move);
-        // Alpha-Beta with Transposition Table Logic could be added here
-        const boardValue = - (await alphaBeta(game, depth - 1, -beta, -alpha));
+        const boardValue = -await alphaBeta(game, depth - 1, -beta, -alpha, true);
         game.undo();
 
         if (boardValue > bestValue) {
@@ -156,41 +293,4 @@ async function getBestMove(fen, depth) {
     }
 
     return { move: bestMove, score: bestValue };
-}
-
-async function alphaBeta(game, depth, alpha, beta) {
-    // Transposition Table Check
-    const fen = game.fen();
-    // (Simple TT Implementation: Store score per FEN)
-    if (transpositionTable.has(fen)) {
-        const entry = transpositionTable.get(fen);
-        if (entry.depth >= depth) return entry.score;
-    }
-
-    if (depth === 0 || game.game_over()) {
-        const score = await evaluate(game);
-        // Save to TT
-        transpositionTable.set(fen, { depth: 0, score: score });
-        return score;
-    }
-
-    const moves = game.moves({ verbose: true });
-    // Move Ordering for inner nodes
-    moves.sort((a, b) => (b.captured ? 10 : 0) - (a.captured ? 10 : 0));
-
-    let value = -Infinity;
-
-    for (const move of moves) {
-        game.move(move);
-        const evalScore = - (await alphaBeta(game, depth - 1, -beta, -alpha));
-        game.undo();
-
-        value = Math.max(value, evalScore);
-        alpha = Math.max(alpha, value);
-        if (alpha >= beta) break;
-    }
-    
-    // Save to TT
-    transpositionTable.set(fen, { depth: depth, score: value });
-    return value;
 }

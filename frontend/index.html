@@ -1,27 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChessMate AI</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" crossorigin="anonymous">
+    <title>GambitFlow AI - Elite Chess Intelligence</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/img/favicon.png">
+
+    <!-- CSS Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css"/>
+
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <h1 class="nav-brand"><a href="#home">♔ ChessMate AI</a></h1>
-            <div class="nav-links">
-                <a href="#home" data-route="home">Home</a>
-                <a href="#explorer" data-route="explorer">Explorer</a>
-                <a href="#play" data-route="play">Play vs Bot</a>
+
+    <!-- Particles Background -->
+    <div id="bg-particles"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top glass-effect">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#home" data-route="home">
+                <i class="fa-solid fa-chess-knight text-primary-gradient fs-3"></i>
+                <span class="fw-bold tracking-wide">GambitFlow</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#home" data-route="home">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#explorer" data-route="explorer">Explorer</a></li>
+                    <li class="nav-item"><a class="nav-link btn-glow px-4" href="#play" data-route="play">Play vs AI</a></li>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <main id="app-container"></main>
+    <!-- Main Content Area -->
+    <main id="app-container" class="d-flex flex-column min-vh-100 pt-5">
+        <!-- Content injected by JavaScript -->
+        <div class="loading-overlay d-flex justify-content-center align-items-center">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    </main>
 
-    <!-- Sounds (আপনার দেওয়া অডিও ট্যাগ) -->
+    <!-- Footer -->
+    <footer class="footer mt-auto py-4 glass-effect-footer">
+        <div class="container text-center">
+            <p class="mb-0 text-muted small">&copy; 2024 GambitFlow AI. Engineered by <a href="https://github.com/NeuraxLabs" class="text-decoration-none text-info">NeuraxLabs</a>.</p>
+        </div>
+    </footer>
+
+    <!-- Sounds -->
     <audio id="moveSound" src="assets/audio/move.mp3"></audio>
     <audio id="captureSound" src="assets/audio/capture.mp3"></audio>
     <audio id="promoteSound" src="assets/audio/promote.mp3"></audio>
@@ -30,18 +67,86 @@
     <audio id="checkSound" src="assets/audio/check.mp3"></audio>
     <audio id="checkmateSound" src="assets/audio/checkmate.mp3"></audio>
 
-    <!-- Libs -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js" crossorigin="anonymous"></script>
+    <!-- Model Selection Modal -->
+    <div class="modal fade" id="modelSelectModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content glass-modal">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-microchip me-2"></i>Select Neural Engine</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-4">
+                        <!-- Nano Model -->
+                        <div class="col-md-6">
+                            <div class="card model-card h-100 p-3" onclick="selectModel('nano')">
+                                <div class="card-body text-center">
+                                    <div class="icon-circle mb-3 mx-auto bg-success-subtle text-success">
+                                        <i class="fa-solid fa-bolt"></i>
+                                    </div>
+                                    <h4 class="card-title fw-bold">Nexus-Nano</h4>
+                                    <p class="text-muted small">Lightweight CNN</p>
+                                    <ul class="list-unstyled text-start small mt-3">
+                                        <li><i class="fa-solid fa-check text-success me-2"></i>Ultra Fast Response</li>
+                                        <li><i class="fa-solid fa-check text-success me-2"></i>Good for Blitz/Bullet</li>
+                                        <li><i class="fa-solid fa-check text-success me-2"></i>Tactical Focus</li>
+                                    </ul>
+                                </div>
+                                <div class="card-footer border-0 bg-transparent">
+                                    <button class="btn btn-outline-success w-100">Select Nano</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Core Model -->
+                        <div class="col-md-6">
+                            <div class="card model-card h-100 p-3 border-primary" onclick="selectModel('core')">
+                                <div class="card-body text-center">
+                                    <div class="badge bg-warning text-dark position-absolute top-0 end-0 m-3">PRO</div>
+                                    <div class="icon-circle mb-3 mx-auto bg-primary-subtle text-primary">
+                                        <i class="fa-solid fa-brain"></i>
+                                    </div>
+                                    <h4 class="card-title fw-bold text-primary-gradient">Nexus-Core</h4>
+                                    <p class="text-muted small">Deep ResNet-10</p>
+                                    <ul class="list-unstyled text-start small mt-3">
+                                        <li><i class="fa-solid fa-check text-primary me-2"></i>Grandmaster Level Positional Play</li>
+                                        <li><i class="fa-solid fa-check text-primary me-2"></i>Trained on 5M+ Elite Games</li>
+                                        <li><i class="fa-solid fa-check text-primary me-2"></i>Deep Calculation</li>
+                                    </ul>
+                                </div>
+                                <div class="card-footer border-0 bg-transparent">
+                                    <button class="btn btn-primary w-100 btn-glow">Select Core</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://unpkg.com/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    
+    <!-- Local Libs: FIXED NAME HERE -->
     <script src="assets/js/lib/chess.js"></script> 
+    
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
 
-    <!-- App Logic -->
+    <!-- App Modules -->
     <script src="assets/js/services/ApiService.js"></script>
     <script src="assets/js/services/ModelService.js"></script> 
     <script src="assets/js/services/RouterService.js"></script>
     <script src="assets/js/components/BoardComponent.js"></script>
     <script src="assets/js/components/StatsTableComponent.js"></script>
     <script src="assets/js/app.js"></script>
+
+    <script>
+        AOS.init({ duration: 800, once: true });
+    </script>
 </body>
 </html>
